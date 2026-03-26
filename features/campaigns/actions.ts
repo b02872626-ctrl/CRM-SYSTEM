@@ -475,6 +475,51 @@ export async function importCampaignLeadsAction(formData: FormData) {
   redirect(`/campaigns/${campaignId}`);
 }
 
+export async function bulkUpdateLeadStatusAction(formData: FormData) {
+  const campaignId = getString(formData, "campaign_id");
+  const companyIds = getStringList(formData, "company_ids");
+  const status = getString(formData, "status");
+
+  if (!campaignId || companyIds.length === 0 || !status) {
+    throw new Error("Campaign, companies, and status are required.");
+  }
+
+  const supabase = await createClient();
+  const { error } = await (supabase
+    .from("campaign_companies") as any)
+    .update({ campaign_status: status })
+    .eq("campaign_id", campaignId)
+    .in("company_id", companyIds);
+
+  if (error) {
+    throw new Error(error.message);
+  }
+
+  revalidatePath(`/campaigns/${campaignId}`);
+}
+
+export async function bulkRemoveLeadsAction(formData: FormData) {
+  const campaignId = getString(formData, "campaign_id");
+  const companyIds = getStringList(formData, "company_ids");
+
+  if (!campaignId || companyIds.length === 0) {
+    throw new Error("Campaign and companies are required.");
+  }
+
+  const supabase = await createClient();
+  const { error } = await supabase
+    .from("campaign_companies")
+    .delete()
+    .eq("campaign_id", campaignId)
+    .in("company_id", companyIds);
+
+  if (error) {
+    throw new Error(error.message);
+  }
+
+  revalidatePath(`/campaigns/${campaignId}`);
+}
+
 export async function createCampaignLeadAction(formData: FormData) {
   const campaignId = getString(formData, "campaign_id");
   const companyName = getString(formData, "company_name");

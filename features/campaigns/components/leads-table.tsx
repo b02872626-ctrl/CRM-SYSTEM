@@ -31,14 +31,42 @@ type Lead = {
 type LeadsTableProps = {
   leads: Lead[];
   onSelectLead: (lead: Lead) => void;
+  selectedIds: Set<string>;
+  onToggleLead: (id: string) => void;
+  onSelectAll: (ids: string[]) => void;
 };
 
-export function LeadsTable({ leads, onSelectLead }: LeadsTableProps) {
+export function LeadsTable({ 
+  leads, 
+  onSelectLead, 
+  selectedIds, 
+  onToggleLead, 
+  onSelectAll 
+}: LeadsTableProps) {
+  const allIds = leads.map(l => l.company_id);
+  const isAllSelected = leads.length > 0 && leads.every(l => selectedIds.has(l.company_id));
+
+  const handleSelectAllChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.checked) {
+      onSelectAll(allIds);
+    } else {
+      onSelectAll([]);
+    }
+  };
+
   return (
     <div className="overflow-x-auto">
       <table className="min-w-full divide-y divide-slate-100">
         <thead className="bg-slate-50">
           <tr>
+            <th className="px-4 py-3 text-left">
+              <input 
+                type="checkbox" 
+                className="h-4 w-4 rounded border-slate-300 text-blue-600 focus:ring-blue-500 cursor-pointer" 
+                checked={isAllSelected}
+                onChange={handleSelectAllChange}
+              />
+            </th>
             <th className="px-4 py-2 text-left text-[10px] font-bold uppercase tracking-wider text-slate-400">Lead / Company</th>
             <th className="px-4 py-2 text-left text-[10px] font-bold uppercase tracking-wider text-slate-400">Primary Contact</th>
             <th className="px-4 py-2 text-left text-[10px] font-bold uppercase tracking-wider text-slate-400">Contact Info</th>
@@ -51,9 +79,20 @@ export function LeadsTable({ leads, onSelectLead }: LeadsTableProps) {
           {leads.map((item) => (
             <tr 
               key={item.id} 
+              className={cn(
+                "hover:bg-slate-50 transition-colors cursor-pointer group",
+                selectedIds.has(item.company_id) ? "bg-blue-50/40" : ""
+              )}
               onClick={() => onSelectLead(item)}
-              className="hover:bg-slate-50 transition-colors cursor-pointer group"
             >
+              <td className="px-4 py-2 align-middle" onClick={(e) => e.stopPropagation()}>
+                <input 
+                  type="checkbox" 
+                  className="h-4 w-4 rounded border-slate-300 text-blue-600 focus:ring-blue-500 cursor-pointer" 
+                  checked={selectedIds.has(item.company_id)}
+                  onChange={() => onToggleLead(item.company_id)}
+                />
+              </td>
               <td className="px-4 py-2 align-middle">
                 {item.company ? (
                   <div>

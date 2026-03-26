@@ -3,6 +3,7 @@
 import { useState, ReactNode } from "react";
 import { LeadsTable } from "./leads-table";
 import { LeadInteractions } from "./lead-interactions";
+import { BulkActionsBar } from "./bulk-actions-bar";
 import { PaginationControls } from "@/components/shared/pagination-controls";
 
 type Lead = {
@@ -52,9 +53,34 @@ export function CampaignLeadsSection({
   availableCompanies
 }: CampaignLeadsSectionProps) {
   const [selectedLead, setSelectedLead] = useState<Lead | null>(null);
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+
+  const handleToggleLead = (id: string) => {
+    const newSelected = new Set(selectedIds);
+    if (newSelected.has(id)) {
+      newSelected.delete(id);
+    } else {
+      newSelected.add(id);
+    }
+    setSelectedIds(newSelected);
+  };
+
+  const handleSelectAll = (ids: string[]) => {
+    if (ids.length === 0) {
+      // If passing empty array, clear only the ones currently visible to avoid clearing everything across pages
+      // Actually, standard behavior is to clear the current selection.
+      setSelectedIds(new Set());
+    } else {
+      const newSelected = new Set(selectedIds);
+      ids.forEach(id => newSelected.add(id));
+      setSelectedIds(newSelected);
+    }
+  };
+
+  const selectedLeads = linkedCompanies.filter(l => selectedIds.has(l.company_id));
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 relative">
       <LeadInteractions 
         campaignId={campaignId}
         availableCompanies={availableCompanies}
@@ -67,7 +93,13 @@ export function CampaignLeadsSection({
           <div className="px-6 py-12 text-center text-slate-500">No leads linked yet.</div>
         ) : (
           <>
-            <LeadsTable leads={linkedCompanies} onSelectLead={setSelectedLead} />
+            <LeadsTable 
+              leads={linkedCompanies} 
+              onSelectLead={setSelectedLead}
+              selectedIds={selectedIds}
+              onToggleLead={handleToggleLead}
+              onSelectAll={handleSelectAll}
+            />
             <PaginationControls
               basePath={`/campaigns/${campaignId}`}
               page={currentPage}
@@ -77,6 +109,12 @@ export function CampaignLeadsSection({
           </>
         )}
       </div>
+
+      <BulkActionsBar 
+        campaignId={campaignId}
+        selectedLeads={selectedLeads}
+        onClearSelection={() => setSelectedIds(new Set())}
+      />
     </div>
   );
 }
