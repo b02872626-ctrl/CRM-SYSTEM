@@ -73,64 +73,66 @@ export function BulkActionsBar({ campaignId, selectedLeads, onClearSelection }: 
   };
 
   return (
-    <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 animate-in fade-in slide-in-from-bottom-4 duration-300">
-      <div className="bg-slate-900 text-white rounded-full px-6 py-3 shadow-2xl flex items-center gap-6 border border-slate-700/50 backdrop-blur-md">
-        <div className="flex items-center gap-3 border-r border-slate-700 pr-6">
-          <span className="flex h-6 w-6 items-center justify-center rounded-full bg-blue-500 text-[10px] font-bold">
+    <div className="fixed bottom-8 left-1/2 -translate-x-1/2 z-50 animate-in fade-in slide-in-from-bottom-6 duration-500 ease-out">
+      <div className="bg-slate-950/95 text-white rounded-full px-5 py-2.5 shadow-[0_20px_50px_rgba(0,0,0,0.3)] flex items-center gap-5 border border-slate-800/60 backdrop-blur-xl">
+        <div className="flex items-center gap-3.5 border-r border-slate-800 pr-5">
+          <span className="flex h-6 w-6 items-center justify-center rounded-full bg-blue-600 text-[11px] font-bold text-white">
             {selectedCount}
           </span>
-          <span className="text-sm font-medium text-slate-300">Leads selected</span>
+          <span className="text-[13px] font-medium text-slate-100 whitespace-nowrap">Leads selected</span>
           <button 
             onClick={onClearSelection}
-            className="p-1 hover:bg-slate-800 rounded-full transition-colors text-slate-500 hover:text-white"
+            className="p-1 hover:bg-slate-800 rounded-full transition-colors text-slate-500 hover:text-slate-300"
           >
-            <X className="h-4 w-4" />
+            <X className="h-3.5 w-3.5" />
           </button>
         </div>
 
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-1.5">
           <button
             onClick={handleBulkEmail}
-            className="flex items-center gap-2 px-3 py-1.5 hover:bg-slate-800 rounded-lg text-sm font-medium transition-colors text-slate-300 hover:text-white"
+            className="flex items-center gap-2.5 px-3.5 py-1.5 hover:bg-slate-800/80 rounded-full text-[13px] font-semibold transition-all text-slate-200 hover:text-white group"
             title={`Email ${emails.length} contacts`}
           >
-            <Mail className="h-4 w-4" />
+            <Mail className="h-4 w-4 text-slate-400 group-hover:text-blue-400 transition-colors" />
             Email
           </button>
 
           <div className="relative">
             <button
               onClick={() => setIsStatusMenuOpen(!isStatusMenuOpen)}
-              className="flex items-center gap-2 px-3 py-1.5 hover:bg-slate-800 rounded-lg text-sm font-medium transition-colors text-slate-300 hover:text-white"
+              className="flex items-center gap-2.5 px-3.5 py-1.5 hover:bg-slate-800/80 rounded-full text-[13px] font-semibold transition-all text-slate-200 hover:text-white group"
             >
-              <CheckCircle className="h-4 w-4" />
+              <CheckCircle className="h-4 w-4 text-slate-400 group-hover:text-emerald-400 transition-colors" />
               Status
-              <ChevronDown className={cn("h-3 w-3 transition-transform", isStatusMenuOpen && "rotate-180")} />
+              <ChevronDown className={cn("h-3.5 w-3.5 text-slate-500 transition-transform duration-300", isStatusMenuOpen && "rotate-180")} />
             </button>
 
             {isStatusMenuOpen && (
-              <div className="absolute bottom-full mb-2 left-0 w-40 bg-slate-800 border border-slate-700 rounded-xl shadow-xl overflow-hidden animate-in fade-in slide-in-from-bottom-2">
-                {["Target", "Researching", "Contacted", "Qualified", "Won", "Lost"].map((status) => (
-                  <button
-                    key={status}
-                    onClick={() => {
-                      handleBulkStatusUpdate(status);
-                      setIsStatusMenuOpen(false);
-                    }}
-                    className="w-full text-left px-4 py-2 text-sm hover:bg-slate-700 transition-colors capitalize text-slate-300 hover:text-white"
-                  >
-                    {status}
-                  </button>
-                ))}
+              <div className="absolute bottom-full mb-3 left-0 w-44 bg-slate-900 border border-slate-800 rounded-2xl shadow-2xl overflow-hidden animate-in fade-in slide-in-from-bottom-2 duration-200">
+                <div className="p-1.5">
+                  {["Target", "Researching", "Contacted", "Qualified", "Won", "Lost"].map((status) => (
+                    <button
+                      key={status}
+                      onClick={() => {
+                        handleBulkStatusUpdate(status);
+                        setIsStatusMenuOpen(false);
+                      }}
+                      className="w-full text-left px-3.5 py-2.5 text-[13px] font-medium rounded-lg hover:bg-slate-800 transition-colors capitalize text-slate-400 hover:text-white"
+                    >
+                      {status}
+                    </button>
+                  ))}
+                </div>
               </div>
             )}
           </div>
 
           <button
             onClick={handleBulkRemove}
-            className="flex items-center gap-2 px-3 py-1.5 hover:bg-red-900/50 hover:text-red-400 rounded-lg text-sm font-medium transition-colors text-slate-500"
+            className="flex items-center gap-2.5 px-3.5 py-1.5 hover:bg-red-500/10 rounded-full text-[13px] font-semibold transition-all text-slate-500 hover:text-red-400 group"
           >
-            <Trash2 className="h-4 w-4" />
+            <Trash2 className="h-4 w-4 text-slate-600 group-hover:text-red-500 transition-colors" />
             Remove
           </button>
         </div>

@@ -3,7 +3,8 @@
 import { useState, useRef, ReactNode } from "react";
 import Link from "next/link";
 import { Plus, Download, Upload, X, MapPin, Users, Mail, Phone, Building2, ExternalLink, Loader2, Check } from "lucide-react";
-import { addCompaniesToCampaignAction, importCampaignLeadsAction, createCampaignLeadAction, parseCsv, importLeadBatchAction } from "@/features/campaigns/actions";
+import { addCompaniesToCampaignAction, importCampaignLeadsAction, createCampaignLeadAction, importLeadBatchAction } from "@/features/campaigns/actions";
+import { parseCsv } from "@/features/campaigns/utils";
 import { cn } from "@/lib/utils";
 
 type Lead = {
