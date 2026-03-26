@@ -59,17 +59,20 @@ async function DashboardRecentUpdates() {
           recentRecords.map((record) => (
             <div
               key={`${record.type}-${record.id}`}
-              className="flex items-center justify-between gap-4 border-t border-slate-200 px-4 py-3"
+              className="flex items-center justify-between gap-4 border-t border-slate-200 px-4 py-3 group relative transition-colors hover:bg-slate-50"
             >
               <div className="min-w-0">
                 <p className="text-xs font-semibold uppercase tracking-[0.12em] text-slate-500">
                   {record.type}
                 </p>
-                <Link href={record.href} className="block truncate font-medium text-slate-950 hover:underline">
+                <Link 
+                  href={record.href} 
+                  className="block truncate font-medium text-slate-950 group-hover:underline after:absolute after:inset-0 after:z-10"
+                >
                   {record.label}
                 </Link>
               </div>
-              <p className="shrink-0 text-xs text-slate-500">{formatDate(record.updated_at)}</p>
+              <p className="shrink-0 text-xs text-slate-500 relative z-20 pointer-events-none">{formatDate(record.updated_at)}</p>
             </div>
           ))
         )}
