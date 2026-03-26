@@ -38,7 +38,7 @@ function ensureCompanyStatus(value: string) {
   return "target";
 }
 
-function parseCsvRow(line: string) {
+function parseCsvRow(line: string, delimiter: string = ",") {
   const values: string[] = [];
   let current = "";
   let inQuotes = false;
@@ -59,7 +59,7 @@ function parseCsvRow(line: string) {
       continue;
     }
 
-    if (char === "," && !inQuotes) {
+    if (char === delimiter && !inQuotes) {
       values.push(current.trim());
       current = "";
       continue;
@@ -86,16 +86,24 @@ function parseCsv(text: string) {
     return [];
   }
 
-  const headers = parseCsvRow(lines[0]).map((h) => 
+  // Detect delimiter: Check first line for tabs vs commas
+  const firstLine = lines[0];
+  const commaCount = (firstLine.match(/,/g) || []).length;
+  const tabCount = (firstLine.match(/\t/g) || []).length;
+  const delimiter = tabCount > commaCount ? "\t" : ",";
+
+  const headers = parseCsvRow(lines[0], delimiter).map((h) => 
     h.trim().toLowerCase().replace(/[^a-z0-9]+/g, '_').replace(/^_|_$/g, '')
   );
 
   return lines.slice(1).map((line) => {
-    const values = parseCsvRow(line);
+    const values = parseCsvRow(line, delimiter);
     const row: Record<string, string> = {};
 
     headers.forEach((header, index) => {
-      row[header] = values[index] ?? "";
+      if (header) {
+        row[header] = values[index] ?? "";
+      }
     });
 
     return row;
@@ -373,12 +381,12 @@ export async function importCampaignLeadsAction(formData: FormData) {
       if (!companyId) {
         const companyPayload: Database["public"]["Tables"]["companies"]["Insert"] = {
           company_name: companyName,
-          industry: normalizeOptionalString((row.industry ?? "").trim()),
-          company_size: normalizeOptionalString((row.company_size ?? "").trim()),
-          location: normalizeOptionalString((row.location ?? "").trim()),
-          status: ensureCompanyStatus((row.status ?? "").trim()),
+          industry: normalizeOptionalString((row.industry ?? row.company_industry ?? "").trim()),
+          company_size: normalizeOptionalString((row.company_size ?? row.size ?? row.employees ?? "").trim()),
+          location: normalizeOptionalString((row.location ?? row.company_location ?? row.city ?? row.address ?? "").trim()),
+          status: ensureCompanyStatus((row.status ?? row.company_status ?? "").trim()),
           owner_id: ownerId,
-          notes: normalizeOptionalString((row.notes ?? "").trim())
+          notes: normalizeOptionalString((row.notes ?? row.description ?? row.about ?? "").trim())
         };
 
         const { data: createdCompany, error: companyError } = await companiesTable
@@ -481,6 +489,7 @@ export async function createCampaignLeadAction(formData: FormData) {
     .insert({
       company_name: companyName,
       industry: normalizeOptionalString(getString(formData, "industry")),
+      company_size: normalizeOptionalString(getString(formData, "company_size")),
       location: normalizeOptionalString(getString(formData, "location")),
       status: ensureCompanyStatus(getString(formData, "company_status") || "target"),
       owner_id: profile?.id

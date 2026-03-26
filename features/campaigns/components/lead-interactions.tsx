@@ -100,14 +100,18 @@ export function LeadInteractions({
                   <label htmlFor="company_name" className="crm-label">Company Name *</label>
                   <input id="company_name" name="company_name" required className="crm-input" placeholder="e.g. Acme Corp" />
                 </div>
-                <div className="grid gap-4 sm:grid-cols-2">
+                <div className="grid gap-4 sm:grid-cols-3">
                   <div className="crm-field">
                     <label htmlFor="industry" className="crm-label">Industry</label>
-                    <input id="industry" name="industry" className="crm-input" placeholder="e.g. Technology" />
+                    <input id="industry" name="industry" className="crm-input" placeholder="e.g. Tech" />
                   </div>
                   <div className="crm-field">
-                    <label htmlFor="country" className="crm-label">Country</label>
-                    <input id="country" name="country" className="crm-input" placeholder="e.g. Kenya" />
+                    <label htmlFor="company_size" className="crm-label">Size</label>
+                    <input id="company_size" name="company_size" className="crm-input" placeholder="e.g. 1-10" />
+                  </div>
+                  <div className="crm-field">
+                    <label htmlFor="location" className="crm-label">Location</label>
+                    <input id="location" name="location" className="crm-input" placeholder="e.g. San Mateo" />
                   </div>
                 </div>
               </div>
@@ -197,9 +201,37 @@ export function LeadInteractions({
                     <p className="text-[10px] font-bold text-slate-400 uppercase">Status</p>
                     <p className="text-sm font-semibold text-slate-900 mt-1">{selectedLead.campaign_status ?? "Added"}</p>
                   </div>
-                  <div className="p-3 bg-slate-50 rounded-lg">
+                  <div className="p-3 bg-slate-50 rounded-lg border border-slate-100">
                     <p className="text-[10px] font-bold text-slate-400 uppercase">Deals</p>
                     <p className="text-sm font-semibold text-slate-900 mt-1">{selectedLead.deal_count}</p>
+                  </div>
+               </div>
+
+               <div className="space-y-4">
+                  <h4 className="text-[10px] font-bold uppercase tracking-widest text-slate-400">Company Details</h4>
+                  
+                  <div className="grid gap-3">
+                    {selectedLead.company?.location && (
+                      <div className="flex items-center gap-3 text-sm text-slate-600">
+                        <div className="h-8 w-8 rounded flex items-center justify-center bg-slate-50 shrink-0">
+                          <MapPin className="h-4 w-4 text-slate-400" />
+                        </div>
+                        <span className="truncate" title={selectedLead.company.location}>{selectedLead.company.location}</span>
+                      </div>
+                    )}
+
+                    {selectedLead.company?.company_size && (
+                      <div className="flex items-center gap-3 text-sm text-slate-600">
+                        <div className="h-8 w-8 rounded flex items-center justify-center bg-slate-50 shrink-0">
+                          <Users className="h-4 w-4 text-slate-400" />
+                        </div>
+                        <span>{selectedLead.company.company_size} employees</span>
+                      </div>
+                    )}
+
+                    {!selectedLead.company?.location && !selectedLead.company?.company_size && (
+                      <p className="text-sm text-slate-400 italic">No additional company details available.</p>
+                    )}
                   </div>
                </div>
                
