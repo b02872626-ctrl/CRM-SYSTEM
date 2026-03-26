@@ -1,3 +1,4 @@
+import { Suspense } from "react";
 import { notFound } from "next/navigation";
 import { CampaignDetail } from "@/features/campaigns/components/campaign-detail";
 import {
@@ -6,6 +7,7 @@ import {
   getCampaignCompanies,
   getCampaignMetrics
 } from "@/features/campaigns/queries";
+import { TableSkeleton } from "@/components/ui/table-skeleton";
 
 type CampaignDetailPageProps = {
   params: Promise<{
@@ -16,23 +18,17 @@ type CampaignDetailPageProps = {
   }>;
 };
 
-export default async function CampaignDetailPage({ params, searchParams }: CampaignDetailPageProps) {
-  const { id } = await params;
-  const sParams = await searchParams;
-  const page = Math.max(1, Number(sParams.page ?? "1") || 1);
-
-  const data = await Promise.all([
+async function CampaignDetailContent({ id, page }: { id: string; page: number }) {
+  const [campaign, linkedCompaniesResult, availableCompanies, metrics] = await Promise.all([
     getCampaignById(id),
     getCampaignCompanies(id, page),
     getAvailableCompaniesForCampaign(id),
     getCampaignMetrics(id)
-  ]).catch(() => null);
+  ]);
 
-  if (!data || !data[0]) {
+  if (!campaign) {
     notFound();
   }
-
-  const [campaign, linkedCompaniesResult, availableCompanies, metrics] = data;
 
   return (
     <CampaignDetail
@@ -44,5 +40,17 @@ export default async function CampaignDetailPage({ params, searchParams }: Campa
       availableCompanies={availableCompanies}
       metrics={metrics}
     />
+  );
+}
+
+export default async function CampaignDetailPage({ params, searchParams }: CampaignDetailPageProps) {
+  const { id } = await params;
+  const sParams = await searchParams;
+  const page = Math.max(1, Number(sParams.page ?? "1") || 1);
+
+  return (
+    <Suspense fallback={<TableSkeleton rows={10} />}>
+      <CampaignDetailContent id={id} page={page} />
+    </Suspense>
   );
 }

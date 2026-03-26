@@ -75,7 +75,7 @@ export async function getCampaigns(filters: CampaignFilters = {}, page = 1) {
   let campaignsQuery = supabase
     .from("campaigns")
     .select(
-      "id, name, description, campaign_type, target_audience, status, owner_id, start_date, end_date, updated_at",
+      "id, name, description, campaign_type, target_audience, status, owner_id, start_date, end_date, updated_at, owner:profiles(id, full_name, email)",
       { count: "exact" }
     )
     .order("updated_at", { ascending: false });
@@ -101,17 +101,8 @@ export async function getCampaigns(filters: CampaignFilters = {}, page = 1) {
     return { items: [], totalCount: 0, pageSize: CAMPAIGNS_PAGE_SIZE };
   }
 
-  const campaigns = (campaignsResult.data ?? []) as CampaignRow[];
+  const campaigns = (campaignsResult.data ?? []) as any[];
   const campaignIds = campaigns.map((campaign) => String(campaign.id ?? ""));
-
-  const ownerIds = Array.from(
-    new Set(
-      campaigns
-        .map((campaign) => getString(campaign.owner_id))
-        .filter((value): value is string => Boolean(value))
-    )
-  );
-  const ownersById = await getProfilesByIds(ownerIds);
 
   const companyCounts = new Map<string, number>();
 
@@ -135,21 +126,19 @@ export async function getCampaigns(filters: CampaignFilters = {}, page = 1) {
 
   return {
     items: campaigns.map((campaign) => {
-    const id = String(campaign.id ?? "");
-    const ownerId = getString(campaign.owner_id);
-
-    return {
-      id,
-      name: String(campaign.name ?? "Untitled campaign"),
-      description: getString(campaign.description),
-      campaign_type: getString(campaign.campaign_type),
-      target_audience: getString(campaign.target_audience),
-      status: String(campaign.status ?? "Draft"),
-      owner: ownerId ? ownersById.get(ownerId) ?? null : null,
-      start_date: getString(campaign.start_date),
-      end_date: getString(campaign.end_date),
-      linked_company_count: companyCounts.get(id) ?? 0
-    };
+      const id = String(campaign.id ?? "");
+      return {
+        id,
+        name: String(campaign.name ?? "Untitled campaign"),
+        description: getString(campaign.description),
+        campaign_type: getString(campaign.campaign_type),
+        target_audience: getString(campaign.target_audience),
+        status: String(campaign.status ?? "Draft"),
+        owner: campaign.owner ?? null,
+        start_date: getString(campaign.start_date),
+        end_date: getString(campaign.end_date),
+        linked_company_count: companyCounts.get(id) ?? 0
+      };
     }),
     totalCount: campaignsResult.count ?? 0,
     pageSize: CAMPAIGNS_PAGE_SIZE
@@ -158,7 +147,11 @@ export async function getCampaigns(filters: CampaignFilters = {}, page = 1) {
 
 export async function getCampaignById(id: string) {
   const supabase = await createClient();
-  const { data, error } = await supabase.from("campaigns").select("*").eq("id", id).maybeSingle();
+  const { data, error } = await supabase
+    .from("campaigns")
+    .select("*, owner:profiles(id, full_name, email)")
+    .eq("id", id)
+    .maybeSingle();
 
   if (error) {
     console.error(`Failed to load campaign ${id}:`, error.message);
@@ -169,9 +162,8 @@ export async function getCampaignById(id: string) {
     return null;
   }
 
-  const campaign = data as CampaignRow;
+  const campaign = data as any;
   const ownerId = getString(campaign.owner_id);
-  const ownersById = await getProfilesByIds(ownerId ? [ownerId] : []);
 
   return {
     id: String(campaign.id ?? id),
@@ -181,7 +173,7 @@ export async function getCampaignById(id: string) {
     target_audience: getString(campaign.target_audience),
     status: String(campaign.status ?? "Draft"),
     owner_id: ownerId,
-    owner: ownerId ? ownersById.get(ownerId) ?? null : null,
+    owner: campaign.owner ?? null,
     start_date: getString(campaign.start_date),
     end_date: getString(campaign.end_date),
     notes: getString(campaign.notes)
