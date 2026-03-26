@@ -88,11 +88,11 @@ export function CampaignLeadsSection({
         onClearLead={() => setSelectedLead(null)}
       />
 
-      <div className="border border-slate-200 bg-white shadow-sm overflow-hidden">
+      <div className="overflow-visible">
         {linkedCompanies.length === 0 ? (
-          <div className="px-6 py-12 text-center text-slate-500">No leads linked yet.</div>
+          <div className="py-12 text-center text-slate-500">No leads linked yet.</div>
         ) : (
-          <>
+          <div className="flex flex-col gap-4">
             <LeadsTable 
               leads={linkedCompanies} 
               onSelectLead={setSelectedLead}
@@ -100,13 +100,15 @@ export function CampaignLeadsSection({
               onToggleLead={handleToggleLead}
               onSelectAll={handleSelectAll}
             />
-            <PaginationControls
-              basePath={`/campaigns/${campaignId}`}
-              page={currentPage}
-              pageSize={linkedCompaniesPageSize}
-              totalCount={linkedCompaniesTotal}
-            />
-          </>
+            <div className="mt-2">
+              <PaginationControls
+                basePath={`/campaigns/${campaignId}`}
+                page={currentPage}
+                pageSize={linkedCompaniesPageSize}
+                totalCount={linkedCompaniesTotal}
+              />
+            </div>
+          </div>
         )}
       </div>
 

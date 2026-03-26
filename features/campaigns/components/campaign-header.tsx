@@ -12,19 +12,12 @@ type CampaignHeaderProps = {
 
 export function CampaignHeader({ campaign }: CampaignHeaderProps) {
   return (
-    <div className="crm-page-header">
-      <div>
-        <p className="crm-page-kicker">Campaigns</p>
-        <h2 className="crm-page-title">{campaign.name}</h2>
-        <p className="crm-page-copy">
-          {campaign.campaign_type ?? "No type"} | {campaign.target_audience ?? "No audience"} |{" "}
-          {campaign.status}
-        </p>
-      </div>
-
-      <Link href={`/campaigns/${campaign.id}/edit`} className="crm-secondary-button">
-        Edit campaign
-      </Link>
+    <div className="mb-6 border-b border-slate-200 pb-4">
+      <h2 className="text-2xl font-bold tracking-tight text-slate-950">{campaign.name}</h2>
+      <p className="mt-1 text-sm text-slate-500">
+        {campaign.campaign_type ?? "No type"} | {campaign.target_audience ?? "No audience"} |{" "}
+        <span className="font-medium text-blue-600">{campaign.status}</span>
+      </p>
     </div>
   );
 }
