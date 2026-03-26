@@ -2,8 +2,8 @@
 
 import { useState, useRef, ReactNode } from "react";
 import Link from "next/link";
-import { Plus, Download, Upload, X, MapPin, Users, Mail, Phone, Building2, ExternalLink } from "lucide-react";
-import { addCompaniesToCampaignAction, importCampaignLeadsAction, createCampaignLeadAction } from "@/features/campaigns/actions";
+import { Plus, Download, Upload, X, MapPin, Users, Mail, Phone, Building2, ExternalLink, Loader2, Check } from "lucide-react";
+import { addCompaniesToCampaignAction, importCampaignLeadsAction, createCampaignLeadAction, parseCsv, importLeadBatchAction } from "@/features/campaigns/actions";
 import { cn } from "@/lib/utils";
 
 type Lead = {
@@ -50,12 +50,56 @@ export function LeadInteractions({
 }: LeadInteractionsProps) {
   const [showAddLeadForm, setShowAddLeadForm] = useState(false);
   const [addMode, setAddMode] = useState<"manual" | "csv" | "existing">("manual");
+  const [isImporting, setIsImporting] = useState(false);
+  const [importProgress, setImportProgress] = useState(0);
+  const [importStatus, setImportStatus] = useState<"idle" | "reading" | "processing" | "done" | "error">("idle");
   const csvFormRef = useRef<HTMLFormElement>(null);
 
-  const handleCsvChange = () => {
-    if (csvFormRef.current) {
-      csvFormRef.current.requestSubmit();
-    }
+  const handleCsvChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    setIsImporting(true);
+    setImportStatus("reading");
+    setImportProgress(0);
+
+    const reader = new FileReader();
+    reader.onload = async (event) => {
+      try {
+        const text = event.target?.result as string;
+        const rows = parseCsv(text);
+        
+        if (rows.length === 0) {
+          setImportStatus("error");
+          setIsImporting(false);
+          return;
+        }
+
+        setImportStatus("processing");
+        const BATCH_SIZE = 20;
+        const totalBatches = Math.ceil(rows.length / BATCH_SIZE);
+
+        for (let i = 0; i < rows.length; i += BATCH_SIZE) {
+          const batch = rows.slice(i, i + BATCH_SIZE);
+          await importLeadBatchAction(campaignId, batch);
+          
+          const progress = Math.min(Math.round(((i + batch.length) / rows.length) * 100), 100);
+          setImportProgress(progress);
+        }
+
+        setImportStatus("done");
+        setTimeout(() => {
+          setShowAddLeadForm(false);
+          setIsImporting(false);
+          setImportStatus("idle");
+        }, 1500);
+      } catch (error) {
+        console.error("Import failed:", error);
+        setImportStatus("error");
+        setIsImporting(false);
+      }
+    };
+    reader.readAsText(file);
   };
 
   return (
@@ -136,25 +180,63 @@ export function LeadInteractions({
 
           {addMode === "csv" && (
             <div className="flex flex-col items-center justify-center py-4 text-center">
-              <form action={importCampaignLeadsAction} ref={csvFormRef} className="space-y-4 w-full max-w-md bg-white p-8 rounded-xl shadow-sm border border-slate-200">
-                <input type="hidden" name="campaign_id" value={campaignId} />
-                <div className="mx-auto w-12 h-12 bg-blue-50 rounded-full flex items-center justify-center mb-4">
-                  <Upload className="h-6 w-6 text-blue-500" />
-                </div>
-                <h4 className="text-base font-semibold text-slate-950 mb-2">Upload CSV File</h4>
-                <div className="relative group cursor-pointer">
-                  <input
-                    type="file"
-                    name="csv_file"
-                    accept=".csv,text/csv"
-                    onChange={handleCsvChange}
-                    className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10"
-                  />
-                  <div className="border-2 border-dashed border-slate-200 rounded-lg py-10 px-4 group-hover:border-blue-400 group-hover:bg-blue-50/30 transition-all text-center">
-                    <p className="text-sm font-medium text-slate-700">Click to choose or drag & drop</p>
+              <div className="space-y-4 w-full max-w-md bg-white p-8 rounded-xl shadow-sm border border-slate-200">
+                {!isImporting && importStatus !== "done" ? (
+                  <>
+                    <div className="mx-auto w-12 h-12 bg-blue-50 rounded-full flex items-center justify-center mb-4">
+                      <Upload className="h-6 w-6 text-blue-500" />
+                    </div>
+                    <h4 className="text-base font-semibold text-slate-950 mb-2">Upload CSV File</h4>
+                    <div className="relative group cursor-pointer">
+                      <input
+                        type="file"
+                        name="csv_file"
+                        accept=".csv,text/csv"
+                        onChange={handleCsvChange}
+                        className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10"
+                      />
+                      <div className="border-2 border-dashed border-slate-200 rounded-lg py-10 px-4 group-hover:border-blue-400 group-hover:bg-blue-50/30 transition-all text-center">
+                        <p className="text-sm font-medium text-slate-700">Click to choose or drag & drop</p>
+                      </div>
+                    </div>
+                    <p className="text-xs text-slate-500 mt-4 italic">Supports both commas and tabs (copy-pasted from Excel)</p>
+                  </>
+                ) : (
+                  <div className="py-6 space-y-6">
+                    <div className="flex flex-col items-center gap-2">
+                       {importStatus === "done" ? (
+                         <div className="h-12 w-12 rounded-full bg-emerald-100 flex items-center justify-center animate-in zoom-in duration-300">
+                           <Check className="h-6 w-6 text-emerald-600" />
+                         </div>
+                       ) : (
+                         <div className="h-12 w-12 rounded-full bg-blue-50 flex items-center justify-center">
+                           <Loader2 className="h-6 w-6 text-blue-500 animate-spin" />
+                         </div>
+                       )}
+                       <p className="text-sm font-semibold text-slate-900">
+                         {importStatus === "reading" ? "Reading file..." : 
+                          importStatus === "processing" ? `Importing leads (${importProgress}%)` : 
+                          importStatus === "done" ? "Import complete!" : 
+                          "An error occurred."}
+                       </p>
+                    </div>
+
+                    <div className="w-full h-2 bg-slate-100 rounded-full overflow-hidden">
+                      <div 
+                        className={cn(
+                          "h-full transition-all duration-300 ease-out",
+                          importStatus === "done" ? "bg-emerald-500" : "bg-blue-500"
+                        )}
+                        style={{ width: `${importProgress}%` }}
+                      />
+                    </div>
+                    
+                    {importStatus === "processing" && (
+                      <p className="text-[10px] text-slate-400 uppercase font-bold tracking-wider">Please do not close this window</p>
+                    )}
                   </div>
-                </div>
-              </form>
+                )}
+              </div>
             </div>
           )}
 

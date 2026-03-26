@@ -38,7 +38,7 @@ function ensureCompanyStatus(value: string) {
   return "target";
 }
 
-function parseCsvRow(line: string, delimiter: string = ",") {
+export function parseCsvRow(line: string, delimiter: string = ",") {
   const values: string[] = [];
   let current = "";
   let inQuotes = false;
@@ -72,7 +72,7 @@ function parseCsvRow(line: string, delimiter: string = ",") {
   return values;
 }
 
-function parseCsv(text: string) {
+export function parseCsv(text: string) {
   // Remove BOM if present
   const cleanText = text.replace(/^\uFEFF/, "");
   
@@ -306,6 +306,87 @@ export async function linkCompanyToCampaignAction(formData: FormData) {
   revalidatePath("/companies");
   revalidatePath(`/companies/${companyId}`);
   redirect(`/companies/${companyId}`);
+}
+
+export async function importLeadBatchAction(campaignId: string, rows: Record<string, string>[]) {
+  if (!campaignId || rows.length === 0) return { success: true };
+
+  const supabase = await createClient();
+  const profile = await getCurrentProfile();
+
+  const companiesTable = supabase.from("companies") as any;
+  const contactsTable = supabase.from("contacts") as any;
+  const campaignCompaniesTable = supabase.from("campaign_companies") as any;
+
+  for (const row of rows) {
+    const companyName = normalizeOptionalString((row.company_name ?? row.company ?? "").trim());
+    if (!companyName) continue;
+
+    const ownerId = await getOwnerIdFromRow(supabase, row);
+    
+    // Find or create company
+    const { data: existingCompany } = await companiesTable
+      .select("id")
+      .ilike("company_name", companyName)
+      .maybeSingle();
+
+    let companyId = existingCompany?.id;
+
+    if (!companyId) {
+      const { data: createdCompany } = await companiesTable
+        .insert({
+          company_name: companyName,
+          industry: normalizeOptionalString((row.industry ?? row.company_industry ?? "").trim()),
+          company_size: normalizeOptionalString((row.company_size ?? row.size ?? row.employees ?? "").trim()),
+          location: normalizeOptionalString((row.location ?? row.company_location ?? row.city ?? row.address ?? "").trim()),
+          status: ensureCompanyStatus((row.status ?? row.company_status ?? "").trim()),
+          owner_id: ownerId,
+          notes: normalizeOptionalString((row.notes ?? row.description ?? row.about ?? "").trim())
+        })
+        .select("id")
+        .single();
+      companyId = createdCompany?.id;
+    } else {
+      // Heal existing company
+      const updatePayload = {
+        industry: normalizeOptionalString((row.industry ?? row.company_industry ?? "").trim()),
+        company_size: normalizeOptionalString((row.company_size ?? row.size ?? row.employees ?? "").trim()),
+        location: normalizeOptionalString((row.location ?? row.company_location ?? row.city ?? row.address ?? "").trim()),
+        notes: normalizeOptionalString((row.notes ?? row.description ?? row.about ?? "").trim())
+      };
+      const cleanUpdate = Object.fromEntries(Object.entries(updatePayload).filter(([_, v]) => v !== null));
+      if (Object.keys(cleanUpdate).length > 0) {
+        await companiesTable.update(cleanUpdate).eq("id", companyId);
+      }
+    }
+
+    if (!companyId) continue;
+
+    // Link to campaign
+    await campaignCompaniesTable.upsert({
+      campaign_id: campaignId,
+      company_id: companyId,
+      campaign_status: normalizeOptionalString((row.campaign_status ?? "").trim()),
+      notes: normalizeOptionalString((row.campaign_notes ?? "").trim())
+    }, { onConflict: "campaign_id,company_id" });
+
+    // Add contact
+    const contactFullName = normalizeOptionalString((row.contact_full_name ?? row.name ?? row.contact_name ?? row.contact ?? "").trim());
+    const contactEmail = normalizeOptionalString((row.contact_email ?? row.email ?? "").trim());
+    
+    if (contactFullName || contactEmail) {
+      await contactsTable.upsert({
+        company_id: companyId,
+        full_name: contactFullName ?? "Primary Contact",
+        job_title: normalizeOptionalString((row.contact_job_title ?? row.contact_role_title ?? row.title ?? row.job_title ?? "").trim()),
+        phone: normalizeOptionalString((row.contact_phone ?? row.phone ?? "").trim()),
+        email: contactEmail
+      }, { onConflict: "company_id,email" });
+    }
+  }
+
+  revalidatePath(`/campaigns/${campaignId}`);
+  return { success: true };
 }
 
 export async function importCampaignLeadsAction(formData: FormData) {
