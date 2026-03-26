@@ -404,6 +404,22 @@ export async function importCampaignLeadsAction(formData: FormData) {
         }
       } else {
         console.log(`[Import] Found existing company with ID: ${companyId}`);
+        // Heal existing company data if missing
+        const updatePayload = {
+          industry: normalizeOptionalString((row.industry ?? row.company_industry ?? "").trim()),
+          company_size: normalizeOptionalString((row.company_size ?? row.size ?? row.employees ?? "").trim()),
+          location: normalizeOptionalString((row.location ?? row.company_location ?? row.city ?? row.address ?? "").trim()),
+          notes: normalizeOptionalString((row.notes ?? row.description ?? row.about ?? "").trim())
+        };
+
+        // Only update if we have new data in these fields
+        const cleanUpdate = Object.fromEntries(
+          Object.entries(updatePayload).filter(([_, v]) => v !== null)
+        );
+
+        if (Object.keys(cleanUpdate).length > 0) {
+          await (supabase.from("companies") as any).update(cleanUpdate).eq("id", companyId);
+        }
       }
       
       if (!companyId) return;
