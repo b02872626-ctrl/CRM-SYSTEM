@@ -185,9 +185,14 @@ export async function getCampaignCompanies(campaignId: string, page = 1) {
   const from = (page - 1) * CAMPAIGN_COMPANIES_PAGE_SIZE;
   const to = from + CAMPAIGN_COMPANIES_PAGE_SIZE - 1;
 
+  // Use a JOIN to get everything in one go - more efficient and avoids mapping errors
   const { data: links, error: linksError, count } = await supabase
     .from("campaign_companies")
-    .select("*", { count: "exact" })
+    .select(`
+      *,
+      company:companies(*),
+      contacts:contacts(*)
+    `, { count: "exact" })
     .eq("campaign_id", campaignId)
     .order("added_at", { ascending: false })
     .range(from, to);
@@ -197,72 +202,37 @@ export async function getCampaignCompanies(campaignId: string, page = 1) {
     return { items: [], totalCount: 0, pageSize: CAMPAIGN_COMPANIES_PAGE_SIZE };
   }
 
-  const companyIds = Array.from(
-    new Set(
-      ((links ?? []) as CampaignCompanyRow[])
-        .map((link) => getString(link.company_id))
-        .filter((value): value is string => Boolean(value))
-    )
-  );
-
-  if (companyIds.length === 0) {
+  if (!links || links.length === 0) {
     return { items: [], totalCount: count ?? 0, pageSize: CAMPAIGN_COMPANIES_PAGE_SIZE };
   }
 
-  const [
-    { data: companies, error: companiesError },
-    { data: deals, error: dealsError },
-    { data: contacts, error: contactsError }
-  ] =
-    await Promise.all([
-      supabase.from("companies").select("*").in("id", companyIds),
-      supabase.from("deals").select("company_id").in("company_id", companyIds),
-      supabase.from("contacts").select("*").in("company_id", companyIds).order("created_at", { ascending: true })
-    ]);
+  // Get deals count for these companies in one batch
+  const companyIds = (links as any[]).map(l => String(l.company_id)).filter(Boolean);
+  const { data: deals } = await supabase
+    .from("deals")
+    .select("company_id")
+    .in("company_id", companyIds);
 
-  if (companiesError) {
-    console.error(`Failed to load linked companies for campaign ${campaignId}:`, companiesError.message);
-    return { items: [], totalCount: 0, pageSize: CAMPAIGN_COMPANIES_PAGE_SIZE };
-  }
-
-  if (dealsError) {
-    console.error(`Failed to load linked deals for campaign ${campaignId}:`, dealsError.message);
-  }
-
-  if (contactsError) {
-    console.error(`Failed to load linked contacts for campaign ${campaignId}:`, contactsError.message);
-  }
-
-  const companiesById = new Map(
-    ((companies ?? []) as CompanyRow[]).map((company) => [String(company.id ?? ""), company])
-  );
   const dealsCountByCompany = new Map<string, number>();
-  const primaryContactByCompany = new Map<
-    string,
-    { full_name: string; job_title: string | null; email: string | null; phone: string | null }
-  >();
-
   for (const deal of (deals ?? []) as DealRow[]) {
-    const companyId = String(deal.company_id ?? "");
-    dealsCountByCompany.set(companyId, (dealsCountByCompany.get(companyId) ?? 0) + 1);
+    const cid = String(deal.company_id ?? "");
+    dealsCountByCompany.set(cid, (dealsCountByCompany.get(cid) ?? 0) + 1);
   }
 
-  for (const contact of (contacts ?? []) as ContactRow[]) {
-    const companyId = String(contact.company_id ?? "");
-
-    if (!primaryContactByCompany.has(companyId)) {
-      primaryContactByCompany.set(companyId, {
-        full_name: String(contact.full_name ?? "Primary Contact"),
-        job_title: getString(contact.job_title),
-        email: getString(contact.email),
-        phone: getString(contact.phone)
-      });
-    }
-  }
-
-  const items = ((links ?? []) as CampaignCompanyRow[]).map((link) => {
+  const items = (links as any[]).map((link) => {
+    const company = link.company;
     const companyId = String(link.company_id ?? "");
-    const company = companiesById.get(companyId);
+    
+    // Pick first contact as primary
+    const contactList = link.contacts as any[];
+    const primaryContact = contactList && contactList.length > 0 
+      ? {
+          full_name: String(contactList[0].full_name ?? "Primary Contact"),
+          job_title: getString(contactList[0].job_title),
+          email: getString(contactList[0].email),
+          phone: getString(contactList[0].phone)
+        }
+      : null;
 
     return {
       id: String(link.id ?? ""),
@@ -282,7 +252,7 @@ export async function getCampaignCompanies(campaignId: string, page = 1) {
             status: String(company.status ?? "Unknown")
           }
         : null,
-      primary_contact: primaryContactByCompany.get(companyId) ?? null,
+      primary_contact: primaryContact,
       deal_count: dealsCountByCompany.get(companyId) ?? 0
     };
   });

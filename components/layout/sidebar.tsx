@@ -13,8 +13,11 @@ type SidebarProps = {
   userEmail?: string | null;
 };
 
+import { useSidebarContext } from "./sidebar-context";
+
 export function Sidebar({ isOpen, onToggle, userEmail }: SidebarProps) {
   const pathname = usePathname();
+  const { title } = useSidebarContext();
 
   const isCampaignPage = pathname.startsWith("/campaigns/") && pathname.split("/").length > 2;
   const campaignId = isCampaignPage ? pathname.split("/")[2] : null;
@@ -23,7 +26,13 @@ export function Sidebar({ isOpen, onToggle, userEmail }: SidebarProps) {
   const pathSegments = pathname.split("/").filter(Boolean);
   const breadcrumbs = pathSegments.map((segment, index) => {
     const href = "/" + pathSegments.slice(0, index + 1).join("/");
-    const label = segment.charAt(0).toUpperCase() + segment.slice(1).replace(/-/g, " ");
+    let label = segment.charAt(0).toUpperCase() + segment.slice(1).replace(/-/g, " ");
+    
+    // If it's a campaign detail page and this is the UUID segment, use the context title
+    if (index === 2 && pathSegments[0] === "campaigns" && title) {
+      label = title;
+    }
+    
     return { href, label };
   });
 
@@ -59,24 +68,34 @@ export function Sidebar({ isOpen, onToggle, userEmail }: SidebarProps) {
           {isOpen && (
             <div className="mt-2 flex items-center justify-between border-t border-slate-200 pt-2">
               <LogoutButton />
-              <button title="Settings" className="p-1 text-slate-400 hover:text-slate-600">
-                <Settings className="h-4 w-4" />
-              </button>
             </div>
           )}
         </div>
 
-        {/* Directory Navigation (Breadcrumbs) */}
+        {/* Directory Navigation (Breadcrumbs) - Tree structure */}
         {isOpen && breadcrumbs.length > 0 && (
           <div className="mb-6 px-1">
-            <p className="mb-1.5 text-[10px] font-bold uppercase tracking-wider text-slate-400">Navigation</p>
-            <div className="flex flex-wrap items-center gap-1 text-[11px] font-medium text-slate-500">
-              <Link href="/dashboard" className="hover:text-blue-600">Home</Link>
+            <p className="mb-2 text-[10px] font-bold uppercase tracking-wider text-slate-400">Navigation</p>
+            <div className="flex flex-col text-[11px] font-medium text-slate-500">
+              <Link href="/dashboard" className="flex items-center gap-2 py-1 hover:text-blue-600 transition-colors">
+                <span className="text-slate-300">○</span>
+                <span>Home</span>
+              </Link>
               {breadcrumbs.map((bc, i) => (
-                <div key={bc.href} className="flex items-center gap-1">
-                  <span className="text-slate-300">/</span>
-                  <Link href={bc.href} className={cn("hover:text-blue-600 truncate max-w-[80px]", i === breadcrumbs.length - 1 && "text-slate-900 font-bold")}>
-                    {bc.label}
+                <div 
+                  key={bc.href} 
+                  className="flex flex-col"
+                  style={{ paddingLeft: `${(i + 1) * 12}px` }}
+                >
+                  <Link 
+                    href={bc.href} 
+                    className={cn(
+                      "flex items-center gap-2 py-1 transition-colors hover:text-blue-600", 
+                      i === breadcrumbs.length - 1 ? "text-slate-900 font-bold" : "text-slate-500"
+                    )}
+                  >
+                    <span className="text-slate-300">└</span>
+                    <span className="truncate">{bc.label}</span>
                   </Link>
                 </div>
               ))}
@@ -97,15 +116,15 @@ export function Sidebar({ isOpen, onToggle, userEmail }: SidebarProps) {
                     href={item.href}
                     title={!isOpen ? item.label : undefined}
                     className={cn(
-                      "flex items-center gap-3 rounded-lg px-2.5 py-2 text-sm font-medium transition-all duration-200",
+                      "flex items-center gap-2 rounded-lg px-2 py-1.5 text-sm font-medium transition-all duration-200",
                       isActive
                         ? "bg-white text-blue-600 shadow-sm ring-1 ring-slate-200"
                         : "text-slate-600 hover:bg-white hover:text-slate-950"
                     )}
                   >
                     <span className={cn(
-                      "h-1.5 w-1.5 shrink-0 rounded-full",
-                      isActive ? "bg-blue-600" : "bg-transparent group-hover:bg-slate-300"
+                      "h-1 w-1 shrink-0 rounded-full",
+                      isActive ? "bg-blue-600" : "bg-slate-300"
                     )} />
                     {isOpen && <span>{item.label}</span>}
                   </Link>
@@ -116,14 +135,14 @@ export function Sidebar({ isOpen, onToggle, userEmail }: SidebarProps) {
 
           {/* Contextual Actions (Edit Campaign) */}
           {isOpen && isCampaignPage && (
-            <div className="animate-in fade-in slide-in-from-left-2 duration-500">
-              <p className="mb-1.5 px-1 text-[10px] font-bold uppercase tracking-wider text-slate-400">Actions</p>
+            <div className="animate-in fade-in slide-in-from-left-2 duration-500 mt-6 pt-4 border-t border-slate-100">
+              <p className="mb-2 px-1 text-[10px] font-bold uppercase tracking-wider text-slate-400">Campaign Actions</p>
               <Link
                 href={`/campaigns/${campaignId}/edit`}
-                className="flex items-center justify-between gap-3 rounded-lg border border-slate-200 bg-white px-2.5 py-2 text-sm font-semibold text-slate-900 shadow-sm hover:border-blue-200 hover:bg-blue-50/50 hover:text-blue-600 transition-all"
+                className="group flex items-center gap-2 px-1 py-1 text-sm font-bold text-slate-900 transition-all"
               >
-                <span>Edit Campaign</span>
-                <ExternalLink className="h-4 w-4 text-slate-400" />
+                <span className="underline decoration-2 underline-offset-4 decoration-slate-300 group-hover:decoration-blue-600 transition-colors">Edit Campaign</span>
+                <ExternalLink className="h-3.5 w-3.5 text-slate-400 group-hover:text-blue-600 transition-colors" />
               </Link>
             </div>
           )}

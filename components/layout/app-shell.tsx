@@ -10,31 +10,35 @@ type AppShellProps = {
   userEmail?: string | null;
 };
 
+import { SidebarProvider } from "./sidebar-context";
+
 export function AppShell({ children, userEmail }: AppShellProps) {
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
 
   return (
-    <div className="min-h-screen bg-[#f7f7f5] text-slate-900">
-      <div className={cn(
-        "min-h-screen transition-all duration-300 ease-in-out",
-        isSidebarOpen ? "lg:pl-64" : "lg:pl-0"
-      )}>
-        <Sidebar 
-          isOpen={isSidebarOpen} 
-          onToggle={() => setIsSidebarOpen(!isSidebarOpen)} 
-          userEmail={userEmail}
-        />
-        <div className="flex min-h-screen flex-1 flex-col">
-          <Topbar 
-            userEmail={userEmail} 
-            isSidebarOpen={isSidebarOpen}
-            onToggleSidebar={() => setIsSidebarOpen(!isSidebarOpen)}
+    <SidebarProvider>
+      <div className="min-h-screen bg-[#f7f7f5] text-slate-900">
+        <div className={cn(
+          "min-h-screen transition-all duration-300 ease-in-out",
+          isSidebarOpen ? "lg:pl-64" : "lg:pl-0"
+        )}>
+          <Sidebar 
+            isOpen={isSidebarOpen} 
+            onToggle={() => setIsSidebarOpen(!isSidebarOpen)} 
+            userEmail={userEmail}
           />
-          <main className="flex-1 px-3 py-4 sm:px-4 lg:px-8">
-            {children}
-          </main>
+          <div className="flex min-h-screen flex-1 flex-col">
+            <Topbar 
+              userEmail={userEmail} 
+              isSidebarOpen={isSidebarOpen}
+              onToggleSidebar={() => setIsSidebarOpen(!isSidebarOpen)}
+            />
+            <main className="flex-1 px-3 py-4 sm:px-4 lg:px-8">
+              {children}
+            </main>
+          </div>
         </div>
       </div>
-    </div>
+    </SidebarProvider>
   );
 }

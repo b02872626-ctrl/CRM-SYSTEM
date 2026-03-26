@@ -3,6 +3,7 @@ import { CampaignStats } from "./campaign-stats";
 import { CampaignTabController } from "./campaign-tab-controller";
 import { CampaignAbout } from "./campaign-about";
 import { CampaignLeadsSection } from "./campaign-leads-section";
+import { SidebarTitle } from "@/components/layout/sidebar-context";
 
 type CampaignDetailProps = {
   campaign: {
@@ -68,6 +69,7 @@ export function CampaignDetail({
 }: CampaignDetailProps) {
   return (
     <section className="crm-page">
+      <SidebarTitle title={campaign.name} />
       <CampaignHeader campaign={campaign} />
       
       <CampaignStats metrics={metrics} />
