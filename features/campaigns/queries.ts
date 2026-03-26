@@ -116,17 +116,19 @@ export async function getCampaigns(filters: CampaignFilters = {}, page = 1) {
   const companyCounts = new Map<string, number>();
 
   if (campaignIds.length > 0) {
-    const { data: countsResult, error: countsError } = await supabase
-      .from("campaign_companies")
-      .select("campaign_id")
+    const { data: countsResult, error: countsError } = await (supabase as any)
+      .from("view_campaign_stats")
+      .select("campaign_id, lead_count")
       .in("campaign_id", campaignIds);
 
     if (countsError) {
-      console.error("Failed to load aggregated campaign counts:", countsError.message);
+      console.error("Failed to load aggregated campaign counts via view:", countsError.message);
     } else {
-      for (const link of (countsResult ?? []) as Array<{ campaign_id: string }>) {
-        const cid = link.campaign_id;
-        companyCounts.set(cid, (companyCounts.get(cid) ?? 0) + 1);
+      for (const row of (countsResult ?? []) as Array<{
+        campaign_id: string;
+        lead_count: number;
+      }>) {
+        companyCounts.set(row.campaign_id, row.lead_count);
       }
     }
   }
@@ -303,43 +305,30 @@ export async function getCampaignCompanies(campaignId: string, page = 1) {
 export async function getCampaignMetrics(campaignId: string) {
   const supabase = await createClient();
 
-  const { data: links } = await supabase
-    .from("campaign_companies")
-    .select("company_id, campaign_status, companies(status)")
-    .eq("campaign_id", campaignId);
+  // Use the RPC for hardware-accelerated counts
+  const { data, error } = await (supabase as any).rpc("get_campaign_metrics_v2", {
+    p_campaign_id: campaignId
+  });
 
-  const validLinks = (links ?? []) as Array<{
-    company_id: string;
-    campaign_status: string | null;
-    companies: { status: string } | null;
-  }>;
-
-  const linkedCompanyCount = validLinks.length;
-  const qualifiedCompanyCount = validLinks.filter((item) => {
-    const companyStatus = item.companies?.status?.toLowerCase();
-    const campaignStatus = item.campaign_status?.toLowerCase();
-    return companyStatus === "qualified" || campaignStatus === "qualified";
-  }).length;
-
-  const companyIds = Array.from(new Set(validLinks.map((l) => l.company_id)));
-
-  let dealsCreatedCount = 0;
-  if (companyIds.length > 0) {
-    const chunkSize = 500;
-    for (let i = 0; i < companyIds.length; i += chunkSize) {
-      const chunk = companyIds.slice(i, i + chunkSize);
-      const { count } = await supabase
-        .from("deals")
-        .select("id", { count: "exact", head: true })
-        .in("company_id", chunk);
-      dealsCreatedCount += count ?? 0;
-    }
+  if (error || !data || data.length === 0) {
+    console.error(`Failed to load campaign metrics via RPC for ${campaignId}:`, error?.message);
+    return {
+      linkedCompanyCount: 0,
+      qualifiedCompanyCount: 0,
+      dealsCreatedCount: 0
+    };
   }
 
+  const metrics = data[0] as {
+    linked_company_count: number;
+    qualified_company_count: number;
+    deals_created_count: number;
+  };
+
   return {
-    linkedCompanyCount,
-    qualifiedCompanyCount,
-    dealsCreatedCount
+    linkedCompanyCount: metrics.linked_company_count,
+    qualifiedCompanyCount: metrics.qualified_company_count,
+    dealsCreatedCount: metrics.deals_created_count
   };
 }
 
