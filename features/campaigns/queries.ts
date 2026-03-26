@@ -1,5 +1,4 @@
-import "server-only";
-
+import { unstable_cache } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 
 const CAMPAIGNS_PAGE_SIZE = 25;
@@ -118,16 +117,18 @@ export async function getCampaigns(filters: CampaignFilters = {}, page = 1) {
   const companyCounts = new Map<string, number>();
 
   if (campaignIds.length > 0) {
-    const countPromises = campaignIds.map(async (id) => {
-      const { count } = await supabase
-        .from("campaign_companies")
-        .select("id", { count: "exact", head: true })
-        .eq("campaign_id", id);
-      return { id, count: count ?? 0 };
-    });
-    const counts = await Promise.all(countPromises);
-    for (const { id, count } of counts) {
-      companyCounts.set(id, count);
+    const { data: countsResult, error: countsError } = await supabase
+      .from("campaign_companies")
+      .select("campaign_id")
+      .in("campaign_id", campaignIds);
+
+    if (countsError) {
+      console.error("Failed to load aggregated campaign counts:", countsError.message);
+    } else {
+      for (const link of (countsResult ?? []) as Array<{ campaign_id: string }>) {
+        const cid = link.campaign_id;
+        companyCounts.set(cid, (companyCounts.get(cid) ?? 0) + 1);
+      }
     }
   }
 
@@ -300,48 +301,52 @@ export async function getCampaignCompanies(campaignId: string, page = 1) {
   };
 }
 
-export async function getCampaignMetrics(campaignId: string) {
-  const supabase = await createClient();
+export const getCampaignMetrics = unstable_cache(
+  async (campaignId: string) => {
+    const supabase = await createClient();
 
-  const { data: links } = await supabase
-    .from("campaign_companies")
-    .select("company_id, campaign_status, companies(status)")
-    .eq("campaign_id", campaignId);
+    const { data: links } = await supabase
+      .from("campaign_companies")
+      .select("company_id, campaign_status, companies(status)")
+      .eq("campaign_id", campaignId);
 
-  const validLinks = (links ?? []) as Array<{
-    company_id: string;
-    campaign_status: string | null;
-    companies: { status: string } | null;
-  }>;
+    const validLinks = (links ?? []) as Array<{
+      company_id: string;
+      campaign_status: string | null;
+      companies: { status: string } | null;
+    }>;
 
-  const linkedCompanyCount = validLinks.length;
-  const qualifiedCompanyCount = validLinks.filter((item) => {
-    const companyStatus = item.companies?.status?.toLowerCase();
-    const campaignStatus = item.campaign_status?.toLowerCase();
-    return companyStatus === "qualified" || campaignStatus === "qualified";
-  }).length;
+    const linkedCompanyCount = validLinks.length;
+    const qualifiedCompanyCount = validLinks.filter((item) => {
+      const companyStatus = item.companies?.status?.toLowerCase();
+      const campaignStatus = item.campaign_status?.toLowerCase();
+      return companyStatus === "qualified" || campaignStatus === "qualified";
+    }).length;
 
-  const companyIds = Array.from(new Set(validLinks.map((l) => l.company_id)));
+    const companyIds = Array.from(new Set(validLinks.map((l) => l.company_id)));
 
-  let dealsCreatedCount = 0;
-  if (companyIds.length > 0) {
-    const chunkSize = 500;
-    for (let i = 0; i < companyIds.length; i += chunkSize) {
-      const chunk = companyIds.slice(i, i + chunkSize);
-      const { count } = await supabase
-        .from("deals")
-        .select("id", { count: "exact", head: true })
-        .in("company_id", chunk);
-      dealsCreatedCount += count ?? 0;
+    let dealsCreatedCount = 0;
+    if (companyIds.length > 0) {
+      const chunkSize = 500;
+      for (let i = 0; i < companyIds.length; i += chunkSize) {
+        const chunk = companyIds.slice(i, i + chunkSize);
+        const { count } = await supabase
+          .from("deals")
+          .select("id", { count: "exact", head: true })
+          .in("company_id", chunk);
+        dealsCreatedCount += count ?? 0;
+      }
     }
-  }
 
-  return {
-    linkedCompanyCount,
-    qualifiedCompanyCount,
-    dealsCreatedCount
-  };
-}
+    return {
+      linkedCompanyCount,
+      qualifiedCompanyCount,
+      dealsCreatedCount
+    };
+  },
+  ["campaign-metrics"],
+  { revalidate: 60, tags: ["campaign-data"] }
+);
 
 export async function getAvailableCompaniesForCampaign(campaignId: string) {
   const supabase = await createClient();
