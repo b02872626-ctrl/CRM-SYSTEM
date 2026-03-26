@@ -336,7 +336,7 @@ export async function getAvailableCompaniesForCampaign(campaignId: string) {
   const supabase = await createClient();
   const [{ data: companies, error: companiesError }, { data: links, error: linksError }] =
     await Promise.all([
-      supabase.from("companies").select("*").order("updated_at", { ascending: false }),
+      supabase.from("companies").select("*").order("updated_at", { ascending: false }).limit(100),
       supabase.from("campaign_companies").select("*").eq("campaign_id", campaignId)
     ]);
 
