@@ -74,3 +74,14 @@ export function parseCsv(text: string) {
 export function normalizeOptionalString(value: string) {
   return value ? value : null;
 }
+
+export function getString(formData: FormData, key: string) {
+  return String(formData.get(key) ?? "").trim();
+}
+
+export function getStringList(formData: FormData, key: string) {
+  return formData
+    .getAll(key)
+    .map((value) => String(value).trim())
+    .filter(Boolean);
+}

@@ -7,9 +7,9 @@ import { createClient } from "@/lib/supabase/server";
 import { getCurrentProfile } from "@/lib/auth";
 import { isCampaignStatus } from "@/features/campaigns/constants";
 
-import { parseCsvRow, parseCsv, normalizeOptionalString } from "./utils";
+import { parseCsvRow, parseCsv, normalizeOptionalString, getString, getStringList } from "./utils";
 
-function ensureCompanyStatus(value: string) {
+function ensureCompanyStatus(value: string): Database["public"]["Tables"]["companies"]["Row"]["status"] {
   const normalized = value.toLowerCase();
 
   if (
@@ -17,23 +17,14 @@ function ensureCompanyStatus(value: string) {
     normalized === "researching" ||
     normalized === "contacted" ||
     normalized === "qualified" ||
-    normalized === "inactive"
+    normalized === "inactive" ||
+    normalized === "lost" ||
+    normalized === "won"
   ) {
     return normalized as Database["public"]["Tables"]["companies"]["Row"]["status"];
   }
 
   return "target";
-}
-
-export function getString(formData: FormData, key: string) {
-  return String(formData.get(key) ?? "").trim();
-}
-
-function getStringList(formData: FormData, key: string) {
-  return formData
-    .getAll(key)
-    .map((value) => String(value).trim())
-    .filter(Boolean);
 }
 
 async function getOwnerIdFromRow(
