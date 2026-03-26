@@ -50,15 +50,18 @@ export function CampaignsTable({ campaigns }: { campaigns: CampaignRow[] }) {
           </thead>
           <tbody>
             {campaigns.map((campaign) => (
-              <tr key={campaign.id} className="crm-table-row">
+              <tr key={campaign.id} className="crm-table-row group relative">
                 <td className="crm-table-td">
-                  <Link href={`/campaigns/${campaign.id}`} className="font-medium text-slate-950 hover:underline">
+                  <Link 
+                    href={`/campaigns/${campaign.id}`} 
+                    className="font-medium text-slate-950 hover:underline after:absolute after:inset-0 after:z-10"
+                  >
                     {campaign.name}
                   </Link>
                 </td>
-                <td className="crm-table-td">{campaign.status}</td>
-                <td className="crm-table-td">{campaign.owner?.full_name ?? "Unassigned"}</td>
-                <td className="crm-table-td">{campaign.linked_company_count}</td>
+                <td className="crm-table-td relative z-20 pointer-events-none">{campaign.status}</td>
+                <td className="crm-table-td relative z-20 pointer-events-none">{campaign.owner?.full_name ?? "Unassigned"}</td>
+                <td className="crm-table-td relative z-20 pointer-events-none">{campaign.linked_company_count}</td>
               </tr>
             ))}
           </tbody>

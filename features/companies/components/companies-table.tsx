@@ -36,9 +36,12 @@ export function CompaniesTable({ companies }: { companies: CompanyRow[] }) {
           </thead>
           <tbody>
             {companies.map((company) => (
-              <tr key={company.id} className="crm-table-row">
+              <tr key={company.id} className="crm-table-row group relative">
                 <td className="crm-table-td">
-                  <Link href={`/companies/${company.id}`} className="font-medium text-slate-950 hover:underline text-sm">
+                  <Link 
+                    href={`/companies/${company.id}`} 
+                    className="font-medium text-slate-950 hover:underline text-sm after:absolute after:inset-0 after:z-10"
+                  >
                     {company.name}
                   </Link>
                 </td>
