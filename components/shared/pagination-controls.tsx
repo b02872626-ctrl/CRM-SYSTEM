@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { cn } from "@/lib/utils";
 
 type PaginationControlsProps = {
   basePath: string;
@@ -44,33 +45,35 @@ export function PaginationControls({
   const to = Math.min(currentPage * pageSize, totalCount);
 
   return (
-    <div className="flex flex-col gap-3 border border-slate-200 bg-white px-3 py-2 text-sm text-slate-600 sm:flex-row sm:items-center sm:justify-between">
-      <p>
-        Showing {from}-{to} of {totalCount}
+    <div className="flex flex-col gap-3 border border-white/5 bg-white/[0.02] px-6 py-3 text-sm text-white/40 sm:flex-row sm:items-center sm:justify-between rounded-sm backdrop-blur-sm">
+      <p className="font-medium">
+        Showing <span className="text-white/90">{from}-{to}</span> of <span className="text-white/90">{totalCount}</span>
       </p>
-      <div className="flex items-center gap-2">
+      <div className="flex items-center gap-3">
         <Link
           href={buildHref(basePath, currentPage - 1, searchParams)}
           aria-disabled={currentPage <= 1}
-          className={
+          className={cn(
+            "inline-flex h-9 items-center rounded-sm border px-4 text-xs font-bold transition-all",
             currentPage <= 1
-              ? "pointer-events-none inline-flex h-8 items-center rounded-md border border-slate-200 px-3 text-slate-400"
-              : "inline-flex h-8 items-center rounded-md border border-slate-300 bg-white px-3 text-slate-700"
-          }
+              ? "pointer-events-none border-white/5 text-white/10"
+              : "border-white/10 bg-white/5 text-white/70 hover:bg-white/10 hover:text-white"
+          )}
         >
           Previous
         </Link>
-        <span className="text-slate-500">
-          Page {currentPage} of {totalPages}
+        <span className="text-white/20 font-bold uppercase text-[10px] tracking-[0.2em]">
+          Page {currentPage} / {totalPages}
         </span>
         <Link
           href={buildHref(basePath, currentPage + 1, searchParams)}
           aria-disabled={currentPage >= totalPages}
-          className={
+          className={cn(
+            "inline-flex h-9 items-center rounded-lg border px-4 text-xs font-bold transition-all",
             currentPage >= totalPages
-              ? "pointer-events-none inline-flex h-8 items-center rounded-md border border-slate-200 px-3 text-slate-400"
-              : "inline-flex h-8 items-center rounded-md border border-slate-300 bg-white px-3 text-slate-700"
-          }
+              ? "pointer-events-none border-white/5 text-white/10"
+              : "border-white/10 bg-white/5 text-white/70 hover:bg-white/10 hover:text-white"
+          )}
         >
           Next
         </Link>

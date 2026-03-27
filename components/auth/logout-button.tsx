@@ -5,7 +5,7 @@ export function LogoutButton() {
     <form action={signOutAction}>
       <button
         type="submit"
-        className="inline-flex h-8 items-center rounded-md border border-slate-300 bg-white px-3 text-sm font-medium text-slate-700"
+        className="crm-secondary-button h-8 w-full justify-center text-xs"
       >
         Logout
       </button>

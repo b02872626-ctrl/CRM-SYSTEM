@@ -18,12 +18,12 @@ export default async function EditCampaignPage({ params }: EditCampaignPageProps
 
   return (
     <section className="space-y-6">
-      <div className="rounded-lg border border-slate-200 bg-white px-6 py-5 shadow-sm">
-        <p className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">
+      <div className="crm-stat-card">
+        <p className="crm-label">
           Campaigns
         </p>
-        <h2 className="mt-2 text-2xl font-semibold text-slate-950">Edit campaign</h2>
-        <p className="mt-1 text-sm text-slate-600">Update campaign ownership, dates, and targeting notes.</p>
+        <h2 className="crm-page-title mt-2">Edit campaign</h2>
+        <p className="crm-page-copy mt-1">Update campaign ownership, dates, and targeting notes.</p>
       </div>
 
       <CampaignForm mode="edit" owners={data.owners} campaign={data.campaign} />

@@ -74,23 +74,26 @@ export function DealsTable({ deals }: { deals: DealRow[] }) {
               const recruiter = getSingleRelation(deal.recruiter);
 
               return (
-                <tr key={deal.id} className="crm-table-row">
+                <tr key={deal.id} className="crm-table-row group relative">
                   <td className="crm-table-td">
-                    <Link href={`/deals/${deal.id}`} className="font-medium text-slate-950 hover:underline">
+                    <Link 
+                      href={`/deals/${deal.id}`} 
+                      className="font-medium text-slate-950 hover:underline after:absolute after:inset-0 after:z-10"
+                    >
                       {deal.title}
                     </Link>
                   </td>
-                  <td className="crm-table-td">
+                  <td className="crm-table-td relative z-20 pointer-events-none">
                     {company?.name ?? "Unlinked company"}
                   </td>
-                  <td className="crm-table-td">{deal.number_of_hires}</td>
-                  <td className="crm-table-td">
+                  <td className="crm-table-td relative z-20 pointer-events-none">{deal.number_of_hires}</td>
+                  <td className="crm-table-td relative z-20 pointer-events-none">
                     {formatEnumLabel(deal.seniority)}
                   </td>
-                  <td className="crm-table-td">
+                  <td className="crm-table-td relative z-20 pointer-events-none">
                     <DealUrgencyBadge urgency={deal.urgency} />
                   </td>
-                  <td className="crm-table-td">
+                  <td className="crm-table-td relative z-20">
                     <div className="space-y-1">
                       <DealStageBadge stage={deal.stage} />
                       <DealStatusForm
@@ -100,13 +103,13 @@ export function DealsTable({ deals }: { deals: DealRow[] }) {
                       />
                     </div>
                   </td>
-                  <td className="crm-table-td">
+                  <td className="crm-table-td relative z-20 pointer-events-none">
                     {recruiter?.full_name ?? "Unassigned"}
                   </td>
-                  <td className="crm-table-td">
+                  <td className="crm-table-td relative z-20 pointer-events-none">
                     {formatCurrency(deal.value, deal.currency)}
                   </td>
-                  <td className="crm-table-td">
+                  <td className="crm-table-td relative z-20 pointer-events-none">
                     {deal.expected_close_date ?? "Not set"}
                   </td>
                 </tr>

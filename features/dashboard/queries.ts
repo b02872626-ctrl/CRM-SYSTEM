@@ -1,5 +1,3 @@
-import "server-only";
-
 import { createClient } from "@/lib/supabase/server";
 
 function startOfTodayUtc() {

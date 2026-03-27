@@ -1,0 +1,65 @@
+import Link from "next/link";
+
+type CompanyRow = {
+  id: string;
+  name: string;
+  industry: string | null;
+  country: string | null;
+  status: string;
+  owner?: { id: string; full_name: string } | null;
+};
+
+export function CompaniesTable({ companies }: { companies: CompanyRow[] }) {
+  if (companies.length === 0) {
+    return (
+      <div className="crm-empty-state">
+        <h3 className="text-base font-bold text-white tracking-tight">No companies found</h3>
+        <p className="mt-1 text-sm text-white/40">
+          Try creating a new company to get started.
+        </p>
+      </div>
+    );
+  }
+
+  return (
+    <div className="crm-table-shell">
+      <div className="overflow-x-auto">
+        <table className="min-w-full">
+          <thead className="crm-table-head">
+            <tr>
+              <th className="crm-table-th">Company</th>
+              <th className="crm-table-th">Industry</th>
+              <th className="crm-table-th">Country</th>
+              <th className="crm-table-th">Status</th>
+              <th className="crm-table-th">Owner</th>
+            </tr>
+          </thead>
+          <tbody>
+            {companies.map((company) => (
+              <tr key={company.id} className="crm-table-row group relative">
+                <td className="crm-table-td">
+                  <Link 
+                    href={`/companies/${company.id}`} 
+                    className="font-bold text-white hover:text-[#2383E2] transition-colors text-sm after:absolute after:inset-0 after:z-10"
+                  >
+                    {company.name}
+                  </Link>
+                </td>
+                <td className="crm-table-td text-sm">{company.industry ?? "Not set"}</td>
+                <td className="crm-table-td text-sm text-white/40">{company.country ?? "Not set"}</td>
+                <td className="crm-table-td">
+                    <span className="inline-flex items-center rounded-sm bg-white/5 px-2 py-0.5 text-[10px] font-bold text-white/60 border border-white/10 uppercase tracking-widest">
+                        {company.status}
+                    </span>
+                </td>
+                <td className="crm-table-td text-sm text-white/40">
+                  {company.owner?.full_name ?? "Unassigned"}
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  );
+}

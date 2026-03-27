@@ -83,7 +83,7 @@ export async function createCompanyAction(formData: FormData) {
     const { error: contactError } = await contactsTable.insert({
       company_id: companyId,
       full_name: contactName ?? "Primary Contact",
-      job_title: contactRole,
+      role_title: contactRole,
       phone: contactPhone,
       email: contactEmail
     });
@@ -96,11 +96,9 @@ export async function createCompanyAction(formData: FormData) {
   const nextStep = normalizeOptionalString(getString(formData, "next_step"));
   const nextStepDate = normalizeOptionalString(getString(formData, "next_step_date"));
 
-  if (nextStep) {
+    if (nextStep) {
     const profile = (await getCurrentProfile()) as { id?: string } | null;
-    const activitiesTable = supabase.from("activities") as unknown as {
-      insert: (values: Database["public"]["Tables"]["activities"]["Insert"]) => Promise<{ error: { message: string } | null }>;
-    };
+    const activitiesTable = (supabase.from("activities") as any);
 
     const { error: activityError } = await activitiesTable.insert({
       company_id: companyId,
@@ -108,7 +106,7 @@ export async function createCompanyAction(formData: FormData) {
       activity_type: "task",
       summary: nextStep,
       due_at: nextStepDate
-    });
+    } as any);
 
     if (activityError) {
       throw new Error(activityError.message);
@@ -117,4 +115,150 @@ export async function createCompanyAction(formData: FormData) {
 
   revalidatePath("/companies");
   redirect(`/companies/${companyId}`);
+}
+
+export async function updateCompanyAction(formData: FormData) {
+  const profile = (await getCurrentProfile()) as { id: string; role: string | null } | null;
+  const supabase = await createClient();
+  const id = getString(formData, "id");
+  if (!id) throw new Error("Company ID is required.");
+
+  // RBAC: Admin or (Owner / Campaign-linked)
+  if (profile?.role !== "admin") {
+    const { data: company } = await (supabase
+      .from("companies")
+      .select("owner_id")
+      .eq("id", id)
+      .maybeSingle() as any);
+
+    if (company?.owner_id !== profile?.id) {
+      // Check if user owns any campaign this company belongs to
+      const { data: campaignLink } = await (supabase
+        .from("campaign_companies")
+        .select("campaign_id, campaigns!inner(owner_id)")
+        .eq("company_id", id)
+        .eq("campaigns.owner_id", profile?.id ?? "")
+        .maybeSingle() as any);
+
+      if (!campaignLink) {
+        throw new Error("Unauthorized: You do not have permission to update this company.");
+      }
+    }
+  }
+
+  const payload = getCompanyPayload(formData);
+  // Also include website if present in payload
+  const website = normalizeOptionalString(getString(formData, "website"));
+  
+  const { error } = await (supabase
+    .from("companies")
+    .update({ ...payload, website } as any)
+    .eq("id", id) as any);
+
+  if (error) throw new Error(error.message);
+
+  revalidatePath("/companies");
+  revalidatePath(`/companies/${id}`);
+  // If it's linked to campaigns, we might need to revalidate those too,
+  // but usually revalidatePath with the specific ID is enough for the slide-over.
+}
+
+export async function createContactAction(formData: FormData) {
+  const profile = (await getCurrentProfile()) as { id: string; role: string | null } | null;
+  const supabase = await createClient();
+  const companyId = getString(formData, "company_id");
+  if (!companyId) throw new Error("Company ID is required.");
+
+  // RBAC: Same as company update
+  if (profile?.role !== "admin") {
+    const { data: company } = await (supabase
+      .from("companies")
+      .select("owner_id")
+      .eq("id", companyId)
+      .maybeSingle() as any);
+
+    if (company?.owner_id !== profile?.id) {
+      const { data: campaignLink } = await (supabase
+        .from("campaign_companies")
+        .select("campaign_id, campaigns!inner(owner_id)")
+        .eq("company_id", companyId)
+        .eq("campaigns.owner_id", profile?.id ?? "")
+        .maybeSingle() as any);
+
+      if (!campaignLink) {
+        throw new Error("Unauthorized: You do not have permission to add contacts to this company.");
+      }
+    }
+  }
+
+  const fullName = getString(formData, "full_name");
+  if (!fullName) throw new Error("Contact name is required.");
+
+  const { error } = await (supabase.from("contacts") as any).insert({
+    company_id: companyId,
+    full_name: fullName,
+    role_title: normalizeOptionalString(getString(formData, "role_title")),
+    email: normalizeOptionalString(getString(formData, "email")),
+    phone: normalizeOptionalString(getString(formData, "phone")),
+    linkedin_url: normalizeOptionalString(getString(formData, "linkedin_url")),
+    notes: normalizeOptionalString(getString(formData, "notes")),
+    status: (getString(formData, "status") as any) || "active"
+  });
+
+  if (error) throw new Error(error.message);
+
+  revalidatePath("/companies");
+  revalidatePath(`/companies/${companyId}`);
+}
+
+export async function updateContactAction(formData: FormData) {
+  const profile = (await getCurrentProfile()) as { id: string; role: string | null } | null;
+  const supabase = await createClient();
+  const contactId = getString(formData, "id");
+  const companyId = getString(formData, "company_id");
+  if (!contactId) throw new Error("Contact ID is required.");
+
+  // RBAC: Same as company update
+  if (profile?.role !== "admin") {
+    // We check if the user has permission for the COMPANY this contact belongs to
+    // If companyId is not provided, we might need to look it up, but usually it is.
+    if (companyId) {
+      const { data: company } = await (supabase
+        .from("companies")
+        .select("owner_id")
+        .eq("id", companyId)
+        .maybeSingle() as any);
+
+      if (company?.owner_id !== profile?.id) {
+        const { data: campaignLink } = await (supabase
+          .from("campaign_companies")
+          .select("campaign_id, campaigns!inner(owner_id)")
+          .eq("company_id", companyId)
+          .eq("campaigns.owner_id", profile?.id ?? "")
+          .maybeSingle() as any);
+
+        if (!campaignLink) {
+          throw new Error("Unauthorized: You do not have permission to update contacts for this company.");
+        }
+      }
+    }
+  }
+
+  const { error } = await (supabase
+    .from("contacts")
+    .update({
+      full_name: getString(formData, "full_name"),
+      role_title: normalizeOptionalString(getString(formData, "role_title")),
+      email: normalizeOptionalString(getString(formData, "email")),
+      phone: normalizeOptionalString(getString(formData, "phone")),
+      linkedin_url: normalizeOptionalString(getString(formData, "linkedin_url")),
+      notes: normalizeOptionalString(getString(formData, "notes")),
+      status: getString(formData, "status") as any
+    } as any)
+    .eq("id", contactId) as any);
+
+  if (error) throw new Error(error.message);
+
+  revalidatePath("/companies");
+  if (companyId) revalidatePath(`/companies/${companyId}`);
 }

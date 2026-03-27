@@ -1,14 +1,10 @@
+import { Suspense } from "react";
 import Link from "next/link";
 import { PaginationControls } from "@/components/shared/pagination-controls";
+import { CompaniesTable } from "@/features/companies/components/companies-table";
 import { getCompanies } from "@/features/companies/queries";
-
-function getSingleRelation<T>(value: T | T[] | null): T | null {
-  if (Array.isArray(value)) {
-    return value[0] ?? null;
-  }
-
-  return value;
-}
+import { TableSkeleton } from "@/components/ui/table-skeleton";
+import { getCurrentProfile } from "@/lib/auth";
 
 type CompaniesPageProps = {
   searchParams: Promise<{
@@ -16,79 +12,63 @@ type CompaniesPageProps = {
   }>;
 };
 
+async function CompaniesContent({ 
+  page, 
+  profile 
+}: { 
+  page: number;
+  profile: { id: string; role: string | null } | null;
+}) {
+  const result = await getCompanies(page, profile);
+
+  return (
+    <>
+      <CompaniesTable companies={result.items} />
+
+      <PaginationControls
+        basePath="/companies"
+        page={page}
+        pageSize={result.pageSize}
+        totalCount={result.totalCount}
+      />
+    </>
+  );
+}
+
 export default async function CompaniesPage({ searchParams }: CompaniesPageProps) {
   const params = await searchParams;
   const page = Math.max(1, Number(params.page ?? "1") || 1);
-  const companiesResult = await getCompanies(page);
-  const companies = companiesResult.items as Array<{
-    id: string;
-    name: string;
-    industry: string | null;
-    country: string | null;
-    status: string;
-    owner:
-      | { id: string; full_name: string | null }
-      | { id: string; full_name: string | null }[]
-      | null;
-  }>;
+  const profile = (await getCurrentProfile()) as { id: string; role: string | null } | null;
+  const isAdmin = profile?.role === "admin";
 
   return (
     <section className="crm-page">
       <div className="crm-page-header">
         <div>
-          <p className="crm-page-kicker">Target Companies</p>
+          <p className="crm-page-kicker">Companies</p>
           <h2 className="crm-page-title">Companies</h2>
           <p className="crm-page-copy">
-            Review target accounts and open each company to log follow-ups and see activity.
+            Centralize all data about the organizations you are targeting or working with.
           </p>
         </div>
 
-        <Link href="/companies/new" className="crm-primary-button">
-          Add Company
-        </Link>
+        {isAdmin && (
+          <Link href="/companies/new" className="crm-primary-button">
+            Create company
+          </Link>
+        )}
       </div>
 
-      <div className="crm-table-shell">
-        <div className="overflow-x-auto">
-          <table className="min-w-full">
-            <thead className="crm-table-head">
-              <tr>
-                <th className="crm-table-th">Company</th>
-                <th className="crm-table-th">Industry</th>
-                <th className="crm-table-th">Country</th>
-                <th className="crm-table-th">Status</th>
-                <th className="crm-table-th">Owner</th>
-              </tr>
-            </thead>
-            <tbody>
-              {companies.map((company) => {
-                const owner = getSingleRelation(company.owner);
-
-                return (
-                  <tr key={company.id} className="crm-table-row">
-                    <td className="crm-table-td">
-                      <Link href={`/companies/${company.id}`} className="font-medium text-slate-950 hover:underline">
-                        {company.name}
-                      </Link>
-                    </td>
-                    <td className="crm-table-td">{company.industry ?? "Not set"}</td>
-                    <td className="crm-table-td">{company.country ?? "Not set"}</td>
-                    <td className="crm-table-td">{company.status}</td>
-                    <td className="crm-table-td">{owner?.full_name ?? "Unassigned"}</td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
+      <div className="mb-6 flex items-center justify-between border border-white/5 bg-white/[0.03] px-6 py-4 rounded-xl">
+        <h3 className="text-sm font-bold text-white uppercase tracking-[0.2em]">All companies</h3>
+        <div className="flex items-center gap-2">
+          {/* Add filters if needed */}
         </div>
       </div>
 
-      <PaginationControls
-        basePath="/companies"
-        page={page}
-        pageSize={companiesResult.pageSize}
-        totalCount={companiesResult.totalCount}
-      />
+      <Suspense fallback={<TableSkeleton rows={10} />}>
+        <CompaniesContent page={page} profile={profile} />
+      </Suspense>
     </section>
   );
 }

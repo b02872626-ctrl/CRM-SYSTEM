@@ -1,3 +1,4 @@
+import { Suspense } from "react";
 import { notFound } from "next/navigation";
 import { CampaignDetail } from "@/features/campaigns/components/campaign-detail";
 import {
@@ -6,6 +7,7 @@ import {
   getCampaignCompanies,
   getCampaignMetrics
 } from "@/features/campaigns/queries";
+import { TableSkeleton } from "@/components/ui/table-skeleton";
 
 type CampaignDetailPageProps = {
   params: Promise<{
@@ -13,26 +15,21 @@ type CampaignDetailPageProps = {
   }>;
   searchParams: Promise<{
     page?: string;
+    search?: string;
   }>;
 };
 
-export default async function CampaignDetailPage({ params, searchParams }: CampaignDetailPageProps) {
-  const { id } = await params;
-  const sParams = await searchParams;
-  const page = Math.max(1, Number(sParams.page ?? "1") || 1);
-
-  const data = await Promise.all([
+async function CampaignDetailContent({ id, page, search }: { id: string; page: number; search?: string }) {
+  const [campaign, linkedCompaniesResult, availableCompanies, metrics] = await Promise.all([
     getCampaignById(id),
-    getCampaignCompanies(id, page),
+    getCampaignCompanies(id, page, search),
     getAvailableCompaniesForCampaign(id),
     getCampaignMetrics(id)
-  ]).catch(() => null);
+  ]);
 
-  if (!data || !data[0]) {
+  if (!campaign) {
     notFound();
   }
-
-  const [campaign, linkedCompaniesResult, availableCompanies, metrics] = data;
 
   return (
     <CampaignDetail
@@ -43,6 +40,20 @@ export default async function CampaignDetailPage({ params, searchParams }: Campa
       currentPage={page}
       availableCompanies={availableCompanies}
       metrics={metrics}
+      searchQuery={search}
     />
+  );
+}
+
+export default async function CampaignDetailPage({ params, searchParams }: CampaignDetailPageProps) {
+  const { id } = await params;
+  const sParams = await searchParams;
+  const page = Math.max(1, Number(sParams.page ?? "1") || 1);
+  const search = sParams.search;
+
+  return (
+    <Suspense fallback={<TableSkeleton rows={10} />}>
+      <CampaignDetailContent id={id} page={page} search={search} />
+    </Suspense>
   );
 }

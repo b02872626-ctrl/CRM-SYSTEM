@@ -20,10 +20,11 @@ export const navigationItems: NavigationItem[] = [
     description: "Follow current opportunities through the sales process."
   },
   {
-    label: "Candidate Pipeline",
-    href: "/candidates",
-    title: "Candidate Pipeline",
-    description: "Review sourcing and recruitment stages for candidate flow."
+    label: "Users",
+    href: "/users",
+    title: "User Management",
+    description: "Manage team roles and access levels.",
+    allowedRoles: ["admin"]
   }
 ];
 

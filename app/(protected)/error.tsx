@@ -8,21 +8,21 @@ type ProtectedErrorPageProps = {
 export default function ProtectedErrorPage({ error, reset }: ProtectedErrorPageProps) {
   return (
     <section className="space-y-4">
-      <div className="rounded-lg border border-red-200 bg-red-50 px-5 py-4">
-        <p className="text-xs font-semibold uppercase tracking-[0.18em] text-red-700">
+      <div className="rounded-sm border border-red-500/20 bg-red-500/10 px-5 py-4">
+        <p className="text-xs font-semibold uppercase tracking-[0.18em] text-red-400">
           Something went wrong
         </p>
-        <h2 className="mt-2 text-xl font-semibold text-red-950">
+        <h2 className="mt-2 text-xl font-bold text-white tracking-tight">
           This page could not load cleanly.
         </h2>
-        <p className="mt-1 text-sm text-red-800">
+        <p className="mt-1 text-sm text-white/60">
           {error.message || "A server error interrupted the request."}
         </p>
-        <div className="mt-4 flex gap-3">
+        <div className="mt-6 flex gap-3">
           <button
             type="button"
             onClick={reset}
-            className="inline-flex h-9 items-center justify-center rounded-md bg-red-900 px-4 text-sm font-medium text-white"
+            className="crm-primary-button bg-red-600 hover:bg-red-500 border-none"
           >
             Try again
           </button>

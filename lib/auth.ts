@@ -50,22 +50,43 @@ export async function getCurrentProfile() {
   if (user?.id || user?.email) {
     const filters = [];
     if (user?.id) filters.push(`auth_user_id.eq.${user.id}`);
-    if (user?.email) filters.push(`email.eq.${user.email}`);
+    if (user?.email) filters.push(`email.ilike.${user.email.toLowerCase()}`);
 
-    const { data } = await supabase
+    const { data: profileByOr, error: orError } = await supabase
       .from("profiles")
-      .select("id, full_name, email")
+      .select("id, full_name, email, role")
       .or(filters.join(","))
       .maybeSingle();
 
-    if (data) {
-      return data;
+    if (profileByOr) return profileByOr;
+
+    // Direct email fallback if combined search failed
+    if (user?.email) {
+      const { data: profileByEmail } = await supabase
+        .from("profiles")
+        .select("id, full_name, email, role")
+        .ilike("email", user.email.toLowerCase())
+        .maybeSingle();
+      
+      if (profileByEmail) return profileByEmail;
+    }
+
+    console.log("No profile found for:", { id: user.id, email: user.email }, "using filters:", filters.join(","));
+
+    // Fallback: If we have an Auth User but no DB Profile, return basic Auth data
+    if (user) {
+      return {
+        id: user.id,
+        email: user.email ?? "",
+        full_name: user.email?.split("@")[0] ?? "User",
+        role: "sales" // Default role for new/unmapped users
+      };
     }
   }
 
   const { data } = await supabase
     .from("profiles")
-    .select("id, full_name, email")
+    .select("id, full_name, email, role")
     .eq("is_active", true)
     .order("created_at", { ascending: true })
     .limit(1)

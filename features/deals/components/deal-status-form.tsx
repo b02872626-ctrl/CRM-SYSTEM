@@ -19,7 +19,7 @@ export function DealStatusForm({
       <select
         name="stage"
         defaultValue={currentStage}
-        className="h-8 rounded-md border border-slate-300 bg-white px-2.5 text-sm text-slate-700"
+        className="crm-select h-9 text-xs"
       >
         {dealStageOptions.map((stage) => (
           <option key={stage} value={stage}>
@@ -29,7 +29,7 @@ export function DealStatusForm({
       </select>
       <button
         type="submit"
-        className="inline-flex h-8 items-center rounded-md border border-slate-300 bg-white px-3 text-sm font-medium text-slate-700"
+        className="crm-secondary-button h-9 px-4"
       >
         Update
       </button>

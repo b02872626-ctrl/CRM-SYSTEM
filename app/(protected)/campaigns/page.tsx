@@ -1,8 +1,12 @@
+import { Suspense } from "react";
 import Link from "next/link";
 import { PaginationControls } from "@/components/shared/pagination-controls";
 import { CampaignsFilters } from "@/features/campaigns/components/campaigns-filters";
 import { CampaignsTable } from "@/features/campaigns/components/campaigns-table";
+import { CampaignsHeader } from "@/features/campaigns/components/campaigns-header";
 import { getCampaignFilterOptions, getCampaigns } from "@/features/campaigns/queries";
+import { TableSkeleton } from "@/components/ui/table-skeleton";
+import { getCurrentProfile } from "@/lib/auth";
 
 type CampaignsPageProps = {
   searchParams: Promise<{
@@ -13,39 +17,34 @@ type CampaignsPageProps = {
   }>;
 };
 
-export default async function CampaignsPage({ searchParams }: CampaignsPageProps) {
-  const params = await searchParams;
-  const page = Math.max(1, Number(params.page ?? "1") || 1);
+async function CampaignsContent({
+  searchParams,
+  profile
+}: {
+  searchParams: { search?: string; status?: string; owner?: string; page?: string };
+  profile: { id: string; role: string | null } | null;
+}) {
+  const page = Math.max(1, Number(searchParams.page ?? "1") || 1);
   const [campaignsResult, options] = await Promise.all([
-    getCampaigns({
-      search: params.search,
-      status: params.status,
-      owner: params.owner
-    }, page),
+    getCampaigns(
+      {
+        search: searchParams.search,
+        status: searchParams.status,
+        owner: searchParams.owner
+      },
+      page,
+      profile
+    ),
     getCampaignFilterOptions()
   ]);
 
   return (
-    <section className="crm-page">
-      <div className="crm-page-header">
-        <div>
-          <p className="crm-page-kicker">Campaigns</p>
-          <h2 className="crm-page-title">Campaigns</h2>
-          <p className="crm-page-copy">
-            Organize outbound focus areas before working companies, deals, and candidates.
-          </p>
-        </div>
-
-        <Link href="/campaigns/new" className="crm-primary-button">
-          Create campaign
-        </Link>
-      </div>
-
+    <>
       <CampaignsFilters
         owners={options.owners}
-        selectedSearch={params.search}
-        selectedStatus={params.status}
-        selectedOwner={params.owner}
+        selectedSearch={searchParams.search}
+        selectedStatus={searchParams.status}
+        selectedOwner={searchParams.owner}
       />
 
       <CampaignsTable campaigns={campaignsResult.items} />
@@ -56,11 +55,27 @@ export default async function CampaignsPage({ searchParams }: CampaignsPageProps
         pageSize={campaignsResult.pageSize}
         totalCount={campaignsResult.totalCount}
         searchParams={{
-          search: params.search,
-          status: params.status,
-          owner: params.owner
+          search: searchParams.search,
+          status: searchParams.status,
+          owner: searchParams.owner
         }}
       />
+    </>
+  );
+}
+
+export default async function CampaignsPage({ searchParams }: CampaignsPageProps) {
+  const params = await searchParams;
+  const profile = await getCurrentProfile();
+  const { owners } = await getCampaignFilterOptions();
+
+  return (
+    <section className="crm-page">
+      <CampaignsHeader owners={owners} profile={profile} />
+
+      <Suspense fallback={<TableSkeleton rows={10} />}>
+        <CampaignsContent searchParams={params} profile={profile} />
+      </Suspense>
     </section>
   );
 }

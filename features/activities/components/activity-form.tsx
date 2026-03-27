@@ -12,7 +12,7 @@ export function ActivityForm({ target, returnPath }: ActivityFormProps) {
   const today = new Date().toISOString().slice(0, 10);
 
   return (
-    <form action={createActivityAction} className="space-y-3 rounded-lg border border-slate-200 bg-white p-4 shadow-sm">
+    <form action={createActivityAction} className="crm-stat-card h-auto space-y-6">
       <input type="hidden" name="return_path" value={returnPath} />
       {"companyId" in target && target.companyId ? (
         <input type="hidden" name="company_id" value={target.companyId} />
@@ -25,19 +25,19 @@ export function ActivityForm({ target, returnPath }: ActivityFormProps) {
       ) : null}
 
       <div className="flex items-center justify-between gap-4">
-        <h3 className="text-base font-semibold text-slate-950">Log activity</h3>
+        <h3 className="text-base font-bold text-white tracking-tight">Log activity</h3>
       </div>
 
-      <div className="grid gap-2.5 md:grid-cols-2">
-        <div className="space-y-1">
-          <label htmlFor="activity_type" className="text-sm font-medium text-slate-700">
+      <div className="grid gap-6 md:grid-cols-2">
+        <div className="crm-field">
+          <label htmlFor="activity_type" className="crm-label">
             Type
           </label>
           <select
             id="activity_type"
             name="activity_type"
             defaultValue="note"
-            className="h-10 w-full rounded-md border border-slate-300 bg-white px-3 text-sm"
+            className="crm-select"
           >
             <option value="note">Note</option>
             <option value="call">Call</option>
@@ -48,8 +48,8 @@ export function ActivityForm({ target, returnPath }: ActivityFormProps) {
           </select>
         </div>
 
-        <div className="space-y-1">
-          <label htmlFor="activity_date" className="text-sm font-medium text-slate-700">
+        <div className="crm-field">
+          <label htmlFor="activity_date" className="crm-label">
             Date
           </label>
           <input
@@ -57,12 +57,12 @@ export function ActivityForm({ target, returnPath }: ActivityFormProps) {
             name="activity_date"
             type="date"
             defaultValue={today}
-            className="h-10 w-full rounded-md border border-slate-300 px-3 text-sm"
+            className="crm-input"
           />
         </div>
 
-        <div className="space-y-1 md:col-span-2">
-          <label htmlFor="summary" className="text-sm font-medium text-slate-700">
+        <div className="crm-field md:col-span-2">
+          <label htmlFor="summary" className="crm-label">
             Summary
           </label>
           <input
@@ -70,39 +70,39 @@ export function ActivityForm({ target, returnPath }: ActivityFormProps) {
             name="summary"
             required
             autoFocus
-            className="h-10 w-full rounded-md border border-slate-300 px-3 text-sm"
+            className="crm-input"
             placeholder="Shared pricing update with client"
           />
         </div>
 
-        <div className="space-y-1 md:col-span-2">
-          <label htmlFor="next_step" className="text-sm font-medium text-slate-700">
+        <div className="crm-field md:col-span-2">
+          <label htmlFor="next_step" className="crm-label">
             Next step
           </label>
           <input
             id="next_step"
             name="next_step"
-            className="h-10 w-full rounded-md border border-slate-300 px-3 text-sm"
+            className="crm-input"
             placeholder="Follow up on feedback"
           />
         </div>
 
-        <div className="space-y-1">
-          <label htmlFor="next_step_date" className="text-sm font-medium text-slate-700">
+        <div className="crm-field">
+          <label htmlFor="next_step_date" className="crm-label">
             Next step date
           </label>
           <input
             id="next_step_date"
             name="next_step_date"
             type="date"
-            className="h-10 w-full rounded-md border border-slate-300 px-3 text-sm"
+            className="crm-input"
           />
         </div>
       </div>
 
       <button
         type="submit"
-        className="inline-flex h-10 items-center rounded-md bg-slate-900 px-4 text-sm font-medium text-white"
+        className="crm-primary-button w-full justify-center mt-2"
       >
         Save activity
       </button>

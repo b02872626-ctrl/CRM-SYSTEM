@@ -1,6 +1,6 @@
 create extension if not exists pgcrypto;
 
-create type public.profile_role as enum ('admin', 'manager', 'agent', 'recruiter');
+create type public.profile_role as enum ('admin', 'sales');
 create type public.company_status as enum (
   'target',
   'researching',
@@ -60,7 +60,7 @@ create table public.profiles (
   auth_user_id uuid unique references auth.users (id) on delete set null,
   full_name text not null,
   email text not null unique,
-  role public.profile_role not null default 'agent',
+  role public.profile_role not null default 'sales',
   job_title text,
   is_active boolean not null default true,
   created_at timestamptz not null default timezone('utc', now()),

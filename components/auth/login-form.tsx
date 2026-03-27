@@ -14,7 +14,7 @@ function SubmitButton() {
     <button
       type="submit"
       disabled={pending}
-      className="inline-flex h-10 w-full items-center justify-center rounded-md bg-slate-900 px-4 text-sm font-medium text-white disabled:cursor-not-allowed disabled:opacity-70"
+      className="crm-primary-button w-full justify-center"
     >
       {pending ? "Signing in..." : "Log in"}
     </button>
@@ -23,11 +23,11 @@ function SubmitButton() {
 
 export function LoginForm({ nextPath = "/dashboard" }: LoginFormProps) {
   return (
-    <form action={signInAction} className="mt-8 space-y-4">
+    <form action={signInAction} className="mt-10 space-y-6">
       <input type="hidden" name="next" value={nextPath} />
 
-      <div className="space-y-2">
-        <label htmlFor="email" className="text-sm font-medium text-slate-700">
+      <div className="crm-field">
+        <label htmlFor="email" className="crm-label">
           Email
         </label>
         <input
@@ -36,13 +36,13 @@ export function LoginForm({ nextPath = "/dashboard" }: LoginFormProps) {
           type="email"
           autoComplete="email"
           required
-          className="h-10 w-full rounded-md border border-slate-300 px-3 text-sm outline-none ring-0 placeholder:text-slate-400 focus:border-slate-900"
+          className="crm-input-underline"
           placeholder="admin@afriworkbpo.com"
         />
       </div>
 
-      <div className="space-y-2">
-        <label htmlFor="password" className="text-sm font-medium text-slate-700">
+      <div className="crm-field">
+        <label htmlFor="password" className="crm-label">
           Password
         </label>
         <input
@@ -51,7 +51,7 @@ export function LoginForm({ nextPath = "/dashboard" }: LoginFormProps) {
           type="password"
           autoComplete="current-password"
           required
-          className="h-10 w-full rounded-md border border-slate-300 px-3 text-sm outline-none ring-0 placeholder:text-slate-400 focus:border-slate-900"
+          className="crm-input-underline"
           placeholder="Enter password"
         />
       </div>

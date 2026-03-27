@@ -13,20 +13,20 @@ export function PlaceholderPage({
 }: PlaceholderPageProps) {
   return (
     <section className="space-y-6">
-      <div className="rounded-lg border border-slate-200 bg-white px-6 py-5 shadow-sm">
-        <div className="space-y-2">
-          <p className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">
+      <div className="crm-stat-card h-auto p-10">
+        <div className="space-y-3">
+          <p className="crm-label">
             Overview
           </p>
-          <h2 className="text-2xl font-semibold text-slate-950">{title}</h2>
-          <p className="max-w-3xl text-sm text-slate-600">{description}</p>
+          <h2 className="crm-page-title">{title}</h2>
+          <p className="crm-page-copy">{description}</p>
         </div>
       </div>
 
-      <div className="flex min-h-[360px] items-center justify-center rounded-lg border border-dashed border-slate-300 bg-white px-6 py-12 shadow-sm">
+      <div className="flex min-h-[420px] items-center justify-center rounded-sm border-2 border-dashed border-white/5 bg-white/[0.02] px-6 py-12">
         <div className="max-w-md text-center">
-          <h3 className="text-lg font-semibold text-slate-950">{emptyTitle}</h3>
-          <p className="mt-2 text-sm leading-6 text-slate-600">{emptyMessage}</p>
+          <h3 className="text-xl font-bold text-white tracking-tight">{emptyTitle}</h3>
+          <p className="mt-4 text-sm leading-relaxed text-white/40">{emptyMessage}</p>
         </div>
       </div>
     </section>

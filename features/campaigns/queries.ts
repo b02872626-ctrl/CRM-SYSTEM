@@ -1,5 +1,3 @@
-import "server-only";
-
 import { createClient } from "@/lib/supabase/server";
 
 const CAMPAIGNS_PAGE_SIZE = 25;
@@ -56,7 +54,7 @@ export async function getCampaignFilterOptions() {
     .limit(100);
 
   if (error) {
-    console.error("Failed to load campaign filter options:", error.message);
+    console.error("Failed to load campaign filter options:", error.message, (error as any).cause);
     return { owners: [] };
   }
 
@@ -68,7 +66,7 @@ export async function getCampaignFilterOptions() {
   };
 }
 
-export async function getCampaigns(filters: CampaignFilters = {}, page = 1) {
+export async function getCampaigns(filters: CampaignFilters = {}, page = 1, profile?: { id: string; role: string | null } | null) {
   const supabase = await createClient();
   const from = (page - 1) * CAMPAIGNS_PAGE_SIZE;
   const to = from + CAMPAIGNS_PAGE_SIZE - 1;
@@ -77,10 +75,15 @@ export async function getCampaigns(filters: CampaignFilters = {}, page = 1) {
   let campaignsQuery = supabase
     .from("campaigns")
     .select(
-      "id, name, description, campaign_type, target_audience, status, owner_id, start_date, end_date, updated_at",
+      "id, name, description, campaign_type, target_audience, status, owner_id, start_date, end_date, updated_at, owner:profiles(id, full_name, email)",
       { count: "exact" }
     )
     .order("updated_at", { ascending: false });
+
+  // RBAC: If not admin, only show campaigns owned by the user
+  if (profile && profile.role !== "admin") {
+    campaignsQuery = campaignsQuery.eq("owner_id", profile.id);
+  }
 
   if (filters.status && filters.status !== "all") {
     campaignsQuery = campaignsQuery.eq("status", filters.status);
@@ -99,55 +102,48 @@ export async function getCampaigns(filters: CampaignFilters = {}, page = 1) {
   const campaignsResult = await campaignsQuery.range(from, to);
 
   if (campaignsResult.error) {
-    console.error("Failed to load campaigns:", campaignsResult.error.message);
+    console.error("Failed to load campaigns:", campaignsResult.error.message, (campaignsResult.error as any).cause);
     return { items: [], totalCount: 0, pageSize: CAMPAIGNS_PAGE_SIZE };
   }
 
-  const campaigns = (campaignsResult.data ?? []) as CampaignRow[];
+  const campaigns = (campaignsResult.data ?? []) as any[];
   const campaignIds = campaigns.map((campaign) => String(campaign.id ?? ""));
-
-  const ownerIds = Array.from(
-    new Set(
-      campaigns
-        .map((campaign) => getString(campaign.owner_id))
-        .filter((value): value is string => Boolean(value))
-    )
-  );
-  const ownersById = await getProfilesByIds(ownerIds);
 
   const companyCounts = new Map<string, number>();
 
   if (campaignIds.length > 0) {
-    const countPromises = campaignIds.map(async (id) => {
-      const { count } = await supabase
-        .from("campaign_companies")
-        .select("id", { count: "exact", head: true })
-        .eq("campaign_id", id);
-      return { id, count: count ?? 0 };
-    });
-    const counts = await Promise.all(countPromises);
-    for (const { id, count } of counts) {
-      companyCounts.set(id, count);
+    const { data: countsResult, error: countsError } = await (supabase as any)
+      .from("view_campaign_stats")
+      .select("campaign_id, lead_count")
+      .in("campaign_id", campaignIds);
+
+    if (countsError) {
+      console.error("Failed to load aggregated campaign counts via view:", countsError.message);
+    } else {
+      for (const row of (countsResult ?? []) as Array<{
+        campaign_id: string;
+        lead_count: number;
+      }>) {
+        companyCounts.set(row.campaign_id, row.lead_count);
+      }
     }
   }
 
   return {
     items: campaigns.map((campaign) => {
-    const id = String(campaign.id ?? "");
-    const ownerId = getString(campaign.owner_id);
-
-    return {
-      id,
-      name: String(campaign.name ?? "Untitled campaign"),
-      description: getString(campaign.description),
-      campaign_type: getString(campaign.campaign_type),
-      target_audience: getString(campaign.target_audience),
-      status: String(campaign.status ?? "Draft"),
-      owner: ownerId ? ownersById.get(ownerId) ?? null : null,
-      start_date: getString(campaign.start_date),
-      end_date: getString(campaign.end_date),
-      linked_company_count: companyCounts.get(id) ?? 0
-    };
+      const id = String(campaign.id ?? "");
+      return {
+        id,
+        name: String(campaign.name ?? "Untitled campaign"),
+        description: getString(campaign.description),
+        campaign_type: getString(campaign.campaign_type),
+        target_audience: getString(campaign.target_audience),
+        status: String(campaign.status ?? "Draft"),
+        owner: campaign.owner ?? null,
+        start_date: getString(campaign.start_date),
+        end_date: getString(campaign.end_date),
+        linked_company_count: companyCounts.get(id) ?? 0
+      };
     }),
     totalCount: campaignsResult.count ?? 0,
     pageSize: CAMPAIGNS_PAGE_SIZE
@@ -156,7 +152,11 @@ export async function getCampaigns(filters: CampaignFilters = {}, page = 1) {
 
 export async function getCampaignById(id: string) {
   const supabase = await createClient();
-  const { data, error } = await supabase.from("campaigns").select("*").eq("id", id).maybeSingle();
+  const { data, error } = await supabase
+    .from("campaigns")
+    .select("*, owner:profiles(id, full_name, email)")
+    .eq("id", id)
+    .maybeSingle();
 
   if (error) {
     console.error(`Failed to load campaign ${id}:`, error.message);
@@ -167,9 +167,8 @@ export async function getCampaignById(id: string) {
     return null;
   }
 
-  const campaign = data as CampaignRow;
+  const campaign = data as any;
   const ownerId = getString(campaign.owner_id);
-  const ownersById = await getProfilesByIds(ownerId ? [ownerId] : []);
 
   return {
     id: String(campaign.id ?? id),
@@ -179,22 +178,35 @@ export async function getCampaignById(id: string) {
     target_audience: getString(campaign.target_audience),
     status: String(campaign.status ?? "Draft"),
     owner_id: ownerId,
-    owner: ownerId ? ownersById.get(ownerId) ?? null : null,
+    owner: campaign.owner ?? null,
     start_date: getString(campaign.start_date),
     end_date: getString(campaign.end_date),
     notes: getString(campaign.notes)
   };
 }
 
-export async function getCampaignCompanies(campaignId: string, page = 1) {
+export async function getCampaignCompanies(campaignId: string, page = 1, searchQuery?: string) {
   const supabase = await createClient();
   const from = (page - 1) * CAMPAIGN_COMPANIES_PAGE_SIZE;
   const to = from + CAMPAIGN_COMPANIES_PAGE_SIZE - 1;
 
-  const { data: links, error: linksError, count } = await supabase
+  // Use a JOIN to get everything in one go - more efficient and avoids mapping errors
+  let query = supabase
     .from("campaign_companies")
-    .select("*", { count: "exact" })
-    .eq("campaign_id", campaignId)
+    .select(`
+      *,
+      company:companies!inner(
+        *,
+        contacts(id, full_name, role_title, email, phone)
+      )
+    `, { count: "exact" })
+    .eq("campaign_id", campaignId);
+
+  if (searchQuery) {
+    query = query.or(`company_name.ilike.%${searchQuery.trim()}%`, { foreignTable: 'company' });
+  }
+
+  const { data: links, error: linksError, count } = await query
     .order("added_at", { ascending: false })
     .range(from, to);
 
@@ -203,72 +215,37 @@ export async function getCampaignCompanies(campaignId: string, page = 1) {
     return { items: [], totalCount: 0, pageSize: CAMPAIGN_COMPANIES_PAGE_SIZE };
   }
 
-  const companyIds = Array.from(
-    new Set(
-      ((links ?? []) as CampaignCompanyRow[])
-        .map((link) => getString(link.company_id))
-        .filter((value): value is string => Boolean(value))
-    )
-  );
-
-  if (companyIds.length === 0) {
+  if (!links || links.length === 0) {
     return { items: [], totalCount: count ?? 0, pageSize: CAMPAIGN_COMPANIES_PAGE_SIZE };
   }
 
-  const [
-    { data: companies, error: companiesError },
-    { data: deals, error: dealsError },
-    { data: contacts, error: contactsError }
-  ] =
-    await Promise.all([
-      supabase.from("companies").select("*").in("id", companyIds),
-      supabase.from("deals").select("company_id").in("company_id", companyIds),
-      supabase.from("contacts").select("*").in("company_id", companyIds).order("created_at", { ascending: true })
-    ]);
+  // Get deals count... (rest should be same)
+  const companyIds = (links as any[]).map(l => String(l.company_id)).filter(Boolean);
+  const { data: deals } = await supabase
+    .from("deals")
+    .select("company_id")
+    .in("company_id", companyIds);
 
-  if (companiesError) {
-    console.error(`Failed to load linked companies for campaign ${campaignId}:`, companiesError.message);
-    return { items: [], totalCount: 0, pageSize: CAMPAIGN_COMPANIES_PAGE_SIZE };
-  }
-
-  if (dealsError) {
-    console.error(`Failed to load linked deals for campaign ${campaignId}:`, dealsError.message);
-  }
-
-  if (contactsError) {
-    console.error(`Failed to load linked contacts for campaign ${campaignId}:`, contactsError.message);
-  }
-
-  const companiesById = new Map(
-    ((companies ?? []) as CompanyRow[]).map((company) => [String(company.id ?? ""), company])
-  );
   const dealsCountByCompany = new Map<string, number>();
-  const primaryContactByCompany = new Map<
-    string,
-    { full_name: string; job_title: string | null; email: string | null; phone: string | null }
-  >();
-
-  for (const deal of (deals ?? []) as DealRow[]) {
-    const companyId = String(deal.company_id ?? "");
-    dealsCountByCompany.set(companyId, (dealsCountByCompany.get(companyId) ?? 0) + 1);
+  for (const deal of (deals ?? []) as any[]) {
+    const cid = String(deal.company_id ?? "");
+    dealsCountByCompany.set(cid, (dealsCountByCompany.get(cid) ?? 0) + 1);
   }
 
-  for (const contact of (contacts ?? []) as ContactRow[]) {
-    const companyId = String(contact.company_id ?? "");
-
-    if (!primaryContactByCompany.has(companyId)) {
-      primaryContactByCompany.set(companyId, {
-        full_name: String(contact.full_name ?? "Primary Contact"),
-        job_title: getString(contact.job_title),
-        email: getString(contact.email),
-        phone: getString(contact.phone)
-      });
-    }
-  }
-
-  const items = ((links ?? []) as CampaignCompanyRow[]).map((link) => {
+  const items = (links as any[]).map((link) => {
+    const company = link.company;
     const companyId = String(link.company_id ?? "");
-    const company = companiesById.get(companyId);
+    
+    // Pick first contact from the nested company contacts as primary
+    const contactList = company?.contacts as any[];
+    const primaryContact = contactList && contactList.length > 0 
+      ? {
+          full_name: String(contactList[0].full_name ?? "Primary Contact"),
+          role_title: getString(contactList[0].role_title),
+          email: getString(contactList[0].email),
+          phone: getString(contactList[0].phone)
+        }
+      : null;
 
     return {
       id: String(link.id ?? ""),
@@ -279,16 +256,25 @@ export async function getCampaignCompanies(campaignId: string, page = 1) {
       company: company
         ? {
             id: String(company.id ?? companyId),
-            name: String(company.company_name ?? company.domain ?? "Untitled company"),
+            name: String(company.company_name ?? (company as any).name ?? company.domain ?? "Untitled company"),
             industry: getString(company.industry),
             company_size: getString(company.company_size),
             location: getString(company.location),
             source: getString(company.source),
             priority: getString(company.priority),
-            status: String(company.status ?? "Unknown")
+            website: getString(company.website ?? company.domain),
+            notes: getString(company.notes),
+            hiring_signal: getString(company.hiring_signal),
+            contacts: contactList?.map(c => ({
+              id: String(c.id),
+              full_name: String(c.full_name),
+              role_title: getString(c.role_title),
+              email: getString(c.email),
+              phone: getString(c.phone)
+            })) ?? []
           }
         : null,
-      primary_contact: primaryContactByCompany.get(companyId) ?? null,
+      primary_contact: primaryContact,
       deal_count: dealsCountByCompany.get(companyId) ?? 0
     };
   });
@@ -303,43 +289,30 @@ export async function getCampaignCompanies(campaignId: string, page = 1) {
 export async function getCampaignMetrics(campaignId: string) {
   const supabase = await createClient();
 
-  const { data: links } = await supabase
-    .from("campaign_companies")
-    .select("company_id, campaign_status, companies(status)")
-    .eq("campaign_id", campaignId);
+  // Use the RPC for hardware-accelerated counts
+  const { data, error } = await (supabase as any).rpc("get_campaign_metrics_v2", {
+    p_campaign_id: campaignId
+  });
 
-  const validLinks = (links ?? []) as Array<{
-    company_id: string;
-    campaign_status: string | null;
-    companies: { status: string } | null;
-  }>;
-
-  const linkedCompanyCount = validLinks.length;
-  const qualifiedCompanyCount = validLinks.filter((item) => {
-    const companyStatus = item.companies?.status?.toLowerCase();
-    const campaignStatus = item.campaign_status?.toLowerCase();
-    return companyStatus === "qualified" || campaignStatus === "qualified";
-  }).length;
-
-  const companyIds = Array.from(new Set(validLinks.map((l) => l.company_id)));
-
-  let dealsCreatedCount = 0;
-  if (companyIds.length > 0) {
-    const chunkSize = 500;
-    for (let i = 0; i < companyIds.length; i += chunkSize) {
-      const chunk = companyIds.slice(i, i + chunkSize);
-      const { count } = await supabase
-        .from("deals")
-        .select("id", { count: "exact", head: true })
-        .in("company_id", chunk);
-      dealsCreatedCount += count ?? 0;
-    }
+  if (error || !data || data.length === 0) {
+    console.error(`Failed to load campaign metrics via RPC for ${campaignId}:`, error?.message);
+    return {
+      linkedCompanyCount: 0,
+      qualifiedCompanyCount: 0,
+      dealsCreatedCount: 0
+    };
   }
 
+  const metrics = data[0] as {
+    linked_company_count: number;
+    qualified_company_count: number;
+    deals_created_count: number;
+  };
+
   return {
-    linkedCompanyCount,
-    qualifiedCompanyCount,
-    dealsCreatedCount
+    linkedCompanyCount: metrics.linked_company_count,
+    qualifiedCompanyCount: metrics.qualified_company_count,
+    dealsCreatedCount: metrics.deals_created_count
   };
 }
 
@@ -347,7 +320,7 @@ export async function getAvailableCompaniesForCampaign(campaignId: string) {
   const supabase = await createClient();
   const [{ data: companies, error: companiesError }, { data: links, error: linksError }] =
     await Promise.all([
-      supabase.from("companies").select("*").order("updated_at", { ascending: false }),
+      supabase.from("companies").select("*").order("updated_at", { ascending: false }).limit(100),
       supabase.from("campaign_companies").select("*").eq("campaign_id", campaignId)
     ]);
 
@@ -370,7 +343,7 @@ export async function getAvailableCompaniesForCampaign(campaignId: string) {
     .filter((company) => !linkedCompanyIds.has(String(company.id ?? "")))
     .map((company) => ({
       id: String(company.id ?? ""),
-      name: String(company.name ?? company.domain ?? "Untitled company"),
+      name: String((company as any).company_name ?? company.name ?? (company as any).domain ?? "Untitled company"),
       industry: getString(company.industry),
       country: getString(company.country)
     }));

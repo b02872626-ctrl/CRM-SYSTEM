@@ -176,18 +176,53 @@ export async function getCandidateActivities(candidateId: string) {
         due_at,
         completed_at,
         profile:profiles(id, full_name),
-        deal:deals(id, title)
+        deal:deals(id, title, role_title)
       `
     )
     .eq("candidate_id", candidateId)
     .order("created_at", { ascending: false });
 
   if (error) {
+    if (error.message.includes("column deals_1.title does not exist")) {
+      const { data: retryData, error: retryError } = await supabase
+        .from("activities")
+        .select(
+          `
+            id,
+            activity_type,
+            summary,
+            details,
+            created_at,
+            due_at,
+            completed_at,
+            profile:profiles(id, full_name),
+            deal:deals(id, role_title)
+          `
+        )
+        .eq("candidate_id", candidateId)
+        .order("created_at", { ascending: false });
+      
+      if (!retryError && retryData) {
+        return (retryData as any[]).map(act => ({
+          ...act,
+          deal: act.deal ? {
+            id: act.deal.id,
+            title: act.deal.role_title ?? "Untitled deal"
+          } : null
+        }));
+      }
+    }
     console.error(`Failed to load candidate activities for ${candidateId}:`, error.message);
     return [];
   }
 
-  return data ?? [];
+  return (data as any[]).map(act => ({
+    ...act,
+    deal: act.deal ? {
+      id: act.deal.id,
+      title: act.deal.title ?? act.deal.role_title ?? "Untitled deal"
+    } : null
+  }));
 }
 
 export async function getCandidateFormData(id?: string) {
