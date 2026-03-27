@@ -14,10 +14,9 @@ export async function updateUserRoleAction(userId: string, newRole: ProfileRole)
 
   const supabase = await createClient();
   
-  const { error } = await (supabase
-    .from("profiles")
-    .update({ role: newRole } as any)
-    .eq("id", userId) as any);
+  const { error } = await (supabase.from("profiles") as any)
+    .update({ role: newRole })
+    .eq("id", userId);
 
   if (error) {
     throw new Error(error.message);
