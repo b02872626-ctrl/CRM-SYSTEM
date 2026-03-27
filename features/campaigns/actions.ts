@@ -145,6 +145,12 @@ export async function createCampaignAction(formData: FormData) {
 
   const supabase = await createClient();
   const payload = getCampaignPayload(formData);
+  
+  // Default to creator if no owner is specified
+  if (!payload.owner_id && profile) {
+    payload.owner_id = profile.id;
+  }
+
   const campaignsTable = supabase.from("campaigns") as unknown as {
     insert: (values: Database["public"]["Tables"]["campaigns"]["Insert"]) => {
       select: (columns: string) => {

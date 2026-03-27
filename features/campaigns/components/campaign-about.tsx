@@ -28,7 +28,7 @@ export function CampaignAbout({ campaign }: CampaignAboutProps) {
         <dl className="mt-6 grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
           <div>
             <dt className="text-[10px] font-bold uppercase tracking-[0.16em] text-white/20">Owner</dt>
-            <dd className="mt-1 text-sm font-semibold text-white/90">{campaign.owner?.full_name ?? "Unassigned"}</dd>
+            <dd className="mt-1 text-sm font-semibold text-white/90">{campaign.owner?.full_name || campaign.owner?.email || "Unassigned"}</dd>
           </div>
           <div>
             <dt className="text-[10px] font-bold uppercase tracking-[0.16em] text-white/20">Status</dt>

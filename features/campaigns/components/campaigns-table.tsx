@@ -61,7 +61,7 @@ export function CampaignsTable({ campaigns }: { campaigns: CampaignRow[] }) {
                    </Link>
                 </td>
                 <td className="crm-table-td relative z-20 pointer-events-none text-white/70">{campaign.status}</td>
-                <td className="crm-table-td relative z-20 pointer-events-none text-white/50">{campaign.owner?.full_name ?? "Unassigned"}</td>
+                <td className="crm-table-td relative z-20 pointer-events-none text-white/50">{campaign.owner?.full_name || campaign.owner?.email || "Unassigned"}</td>
                 <td className="crm-table-td relative z-20 pointer-events-none font-medium text-white/70">{campaign.linked_company_count}</td>
                 <td className="crm-table-td relative z-30 text-right">
                   <form 

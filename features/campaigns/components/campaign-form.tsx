@@ -24,10 +24,11 @@ type CampaignFormProps = {
   mode: "create" | "edit";
   owners: OwnerOption[];
   campaign?: CampaignRecord | null;
+  defaultOwnerId?: string;
   onCancel?: () => void;
 };
 
-export function CampaignForm({ mode, owners, campaign, onCancel }: CampaignFormProps) {
+export function CampaignForm({ mode, owners, campaign, defaultOwnerId, onCancel }: CampaignFormProps) {
   const action = mode === "create" ? createCampaignAction : updateCampaignAction;
 
   return (
@@ -64,7 +65,7 @@ export function CampaignForm({ mode, owners, campaign, onCancel }: CampaignFormP
 
         <div className="crm-field">
           <label htmlFor="owner_id" className="crm-label">Owner</label>
-          <select id="owner_id" name="owner_id" defaultValue={campaign?.owner_id ?? ""} className="crm-select">
+          <select id="owner_id" name="owner_id" defaultValue={campaign?.owner_id ?? defaultOwnerId ?? ""} className="crm-select">
             <option value="">Unassigned</option>
             {owners.map((owner) => <option key={owner.id} value={owner.id}>{owner.full_name}</option>)}
           </select>

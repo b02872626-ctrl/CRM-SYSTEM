@@ -1,8 +1,12 @@
 import { CampaignForm } from "@/features/campaigns/components/campaign-form";
 import { getCampaignFormData } from "@/features/campaigns/queries";
+import { getCurrentProfile } from "@/lib/auth";
 
 export default async function NewCampaignPage() {
-  const { owners } = await getCampaignFormData();
+  const [{ owners }, profile] = await Promise.all([
+    getCampaignFormData(),
+    getCurrentProfile()
+  ]);
 
   return (
     <section className="space-y-6">
@@ -16,7 +20,11 @@ export default async function NewCampaignPage() {
         </p>
       </div>
 
-      <CampaignForm mode="create" owners={owners} />
+      <CampaignForm 
+        mode="create" 
+        owners={owners} 
+        defaultOwnerId={profile?.id} 
+      />
     </section>
   );
 }
