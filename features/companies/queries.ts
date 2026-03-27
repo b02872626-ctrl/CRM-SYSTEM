@@ -1,10 +1,11 @@
 import "server-only";
+import { cache } from "react";
 
 import { createClient } from "@/lib/supabase/server";
 
 const COMPANIES_PAGE_SIZE = 25;
 
-export async function getCompanies(page = 1, profile?: { id: string; role: string | null } | null) {
+export const getCompanies = cache(async (page = 1, profile?: { id: string; role: string | null } | null) => {
   const supabase = await createClient();
   const from = (page - 1) * COMPANIES_PAGE_SIZE;
   const to = from + COMPANIES_PAGE_SIZE - 1;
@@ -46,9 +47,9 @@ export async function getCompanies(page = 1, profile?: { id: string; role: strin
     totalCount: count ?? 0,
     pageSize: COMPANIES_PAGE_SIZE
   };
-}
+});
 
-export async function getCompanyById(id: string) {
+export const getCompanyById = cache(async (id: string) => {
   const supabase = await createClient();
   const { data, error } = await supabase.from("companies").select("*").eq("id", id).maybeSingle();
 
@@ -89,9 +90,9 @@ export async function getCompanyById(id: string) {
     notes: typeof company.notes === "string" ? company.notes : null,
     owner: null
   };
-}
+});
 
-export async function getCompanyFormOptions() {
+export const getCompanyFormOptions = cache(async () => {
   const supabase = await createClient();
   const { data, error } = await supabase
     .from("profiles")
@@ -110,7 +111,7 @@ export async function getCompanyFormOptions() {
       full_name: String(profile.full_name ?? profile.email ?? "Unknown user")
     }))
   };
-}
+});
 
 export async function getCompanyDeals(companyId: string) {
   const supabase = await createClient();

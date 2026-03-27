@@ -22,7 +22,7 @@ export function AppShell({ children, userEmail, userRole, userName }: AppShellPr
       <div className="min-h-screen bg-background text-foreground">
         <div className={cn(
           "min-h-screen transition-all duration-300 ease-in-out",
-          isSidebarOpen ? "lg:pl-64" : "lg:pl-0"
+          isSidebarOpen ? "lg:pl-64" : "lg:pl-16"
         )}>
           <Sidebar 
             isOpen={isSidebarOpen} 

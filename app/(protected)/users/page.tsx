@@ -2,15 +2,20 @@ import { redirect } from "next/navigation";
 import { getCurrentProfile } from "@/lib/auth";
 import { getUsers } from "@/features/users/queries";
 import { UsersTable } from "@/features/users/components/users-table";
+import { Suspense } from "react";
+import { TableSkeleton } from "@/components/ui/table-skeleton";
+
+async function UsersTableContent({ currentUserId }: { currentUserId: string }) {
+  const users = await getUsers();
+  return <UsersTable users={users as any} currentUserId={currentUserId} />;
+}
 
 export default async function UsersPage() {
-  const currentProfile = (await getCurrentProfile()) as { id: string; role: string | null } | null;
+  const currentProfile = await getCurrentProfile();
 
-  if (!currentProfile || currentProfile.role !== "admin") {
+  if (!currentProfile || (currentProfile.role as string) !== "admin") {
     redirect("/dashboard");
   }
-
-  const users = await getUsers();
 
   return (
     <div className="space-y-6">
@@ -21,7 +26,9 @@ export default async function UsersPage() {
         </div>
       </header>
 
-      <UsersTable users={users as any} currentUserId={currentProfile.id} />
+      <Suspense fallback={<TableSkeleton rows={5} />}>
+        <UsersTableContent currentUserId={currentProfile.id} />
+      </Suspense>
     </div>
   );
 }

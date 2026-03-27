@@ -6,7 +6,6 @@ type User = {
   full_name: string;
   email: string;
   role: ProfileRole;
-  is_active: boolean;
 };
 
 type UsersTableProps = {
@@ -24,7 +23,6 @@ export function UsersTable({ users, currentUserId }: UsersTableProps) {
               <th className="px-6 py-4">Name</th>
               <th className="px-6 py-4">Email</th>
               <th className="px-6 py-4">Role</th>
-              <th className="px-6 py-4">Status</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-white/5">
@@ -43,14 +41,6 @@ export function UsersTable({ users, currentUserId }: UsersTableProps) {
                   {user.id === currentUserId && (
                     <span className="ml-2 text-[10px] text-white/20 italic">(You)</span>
                   )}
-                </td>
-                <td className="px-6 py-4 text-right sm:text-left">
-                  <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-semibold tracking-wide ${
-                    user.is_active === false ? "bg-red-500/10 text-red-500" : "bg-emerald-500/10 text-emerald-500"
-                  }`}>
-                    <span className={`mr-1.5 h-1.5 w-1.5 rounded-full ${user.is_active === false ? "bg-red-500" : "bg-emerald-500"}`}></span>
-                    {user.is_active === false ? "Inactive" : "Active"}
-                  </span>
                 </td>
               </tr>
             ))}

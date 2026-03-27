@@ -1,11 +1,11 @@
+import { cache } from "react";
 import { createClient } from "@/lib/supabase/server";
-import { Database } from "@/types/database";
 
-export async function getUsers() {
+export const getUsers = cache(async () => {
   const supabase = await createClient();
   const { data, error } = await supabase
     .from("profiles")
-    .select("*")
+    .select("id, full_name, email, role")
     .order("full_name");
 
   if (error) {
@@ -13,9 +13,9 @@ export async function getUsers() {
   }
 
   return data;
-}
+});
 
-export async function getUserById(id: string) {
+export const getUserById = cache(async (id: string) => {
   const supabase = await createClient();
   const { data, error } = await supabase
     .from("profiles")
@@ -28,4 +28,4 @@ export async function getUserById(id: string) {
   }
 
   return data;
-}
+});

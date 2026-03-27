@@ -37,11 +37,14 @@ import {
 } from "@/features/companies/actions";
 import { parseCsv } from "@/features/campaigns/utils";
 import { cn } from "@/lib/utils";
+import { NotionSelect } from "@/components/ui/notion-select";
+import { SALES_STATUS_OPTIONS, INTEREST_LEVEL_OPTIONS } from "@/features/campaigns/constants";
 
 type Lead = {
   id: string;
   company_id: string;
   campaign_status: string | null;
+  interest_level: string | null;
   added_at: string | null;
   notes: string | null;
   company: {
@@ -82,20 +85,23 @@ type LeadInteractionsProps = {
   }>;
   selectedLead: Lead | null;
   onClearLead: () => void;
+  setHasUnsavedChanges: (val: boolean) => void;
 };
 
 export function LeadInteractions({ 
   campaignId, 
   availableCompanies, 
   selectedLead, 
-  onClearLead 
+  onClearLead,
+  setHasUnsavedChanges
 }: LeadInteractionsProps) {
   const router = useRouter();
   const [showAddLeadForm, setShowAddLeadForm] = useState(false);
   const [addMode, setAddMode] = useState<"manual" | "csv" | "existing">("manual");
   const [isImporting, setIsImporting] = useState(false);
   const [importProgress, setImportProgress] = useState(0);
-  const [importStatus, setImportStatus] = useState<"idle" | "reading" | "processing" | "done" | "error">("idle");
+  const [importStatus, setImportStatus] = useState<"idle" | "reading" | "confirming" | "processing" | "done" | "error">("idle");
+  const [pendingRows, setPendingRows] = useState<any[]>([]);
   const csvFormRef = useRef<HTMLFormElement>(null);
   
   const [isEditing, setIsEditing] = useState(false);
@@ -123,47 +129,58 @@ export function LeadInteractions({
         const text = event.target?.result as string;
         const rows = parseCsv(text);
         
-        if (rows.length === 0) {
-          setImportStatus("error");
-          setIsImporting(false);
-          return;
-        }
-
-        setImportStatus("processing");
-        const BATCH_SIZE = 100;
-        const CONCURRENCY = 3;
-        
-        for (let i = 0; i < rows.length; i += BATCH_SIZE * CONCURRENCY) {
-          const chunk = [];
-          for (let j = 0; j < CONCURRENCY; j++) {
-            const start = i + (j * BATCH_SIZE);
-            if (start < rows.length) {
-              const batch = rows.slice(start, start + BATCH_SIZE);
-              chunk.push(importLeadBatchAction(campaignId, batch));
-            }
-          }
-          
-          await Promise.all(chunk);
-          
-          const processedCount = Math.min(i + (BATCH_SIZE * CONCURRENCY), rows.length);
-          const progress = Math.min(Math.round((processedCount / rows.length) * 100), 100);
-          setImportProgress(progress);
-        }
-
-        setImportStatus("done");
-        router.refresh(); // Ensure the leads list updates
-        setTimeout(() => {
-          setShowAddLeadForm(false);
-          setIsImporting(false);
-          setImportStatus("idle");
-        }, 1500);
+        setPendingRows(rows);
+        setImportStatus("confirming");
       } catch (error) {
-        console.error("Import failed:", error);
+        console.error("File reading failed:", error);
         setImportStatus("error");
         setIsImporting(false);
       }
     };
     reader.readAsText(file);
+  };
+
+  const handleConfirmImport = async () => {
+    if (pendingRows.length === 0) return;
+    
+    setIsImporting(true);
+    setImportStatus("processing");
+    setImportProgress(0);
+
+    try {
+      const BATCH_SIZE = 100;
+      const CONCURRENCY = 3;
+      
+      for (let i = 0; i < pendingRows.length; i += BATCH_SIZE * CONCURRENCY) {
+        const chunk = [];
+        for (let j = 0; j < CONCURRENCY; j++) {
+          const start = i + (j * BATCH_SIZE);
+          if (start < pendingRows.length) {
+            const batch = pendingRows.slice(start, start + BATCH_SIZE);
+            chunk.push(importLeadBatchAction(campaignId, batch));
+          }
+        }
+        
+        await Promise.all(chunk);
+        
+        const processedCount = Math.min(i + (BATCH_SIZE * CONCURRENCY), pendingRows.length);
+        const progress = Math.min(Math.round((processedCount / pendingRows.length) * 100), 100);
+        setImportProgress(progress);
+      }
+
+      setImportStatus("done");
+      router.refresh(); 
+      setTimeout(() => {
+        setShowAddLeadForm(false);
+        setIsImporting(false);
+        setImportStatus("idle");
+        setPendingRows([]);
+      }, 1500);
+    } catch (error) {
+      console.error("Import failed:", error);
+      setImportStatus("error");
+      setIsImporting(false);
+    }
   };
 
   return (
@@ -183,7 +200,7 @@ export function LeadInteractions({
       </div>
 
       {showAddLeadForm && (
-        <div className="border border-white/5 bg-white/[0.01] p-6 shadow-inner mb-6 rounded-xl backdrop-blur-sm">
+        <div className="border border-white/5 bg-white/[0.01] p-6 shadow-inner mb-6 rounded-md">
           <div className="mb-6 flex gap-2">
             {["manual", "csv", "existing"].map((mode) => (
               <button
@@ -259,7 +276,7 @@ export function LeadInteractions({
 
           {addMode === "csv" && (
             <div className="flex flex-col items-center justify-center py-4 text-center">
-              <div className="space-y-4 w-full max-w-md bg-white/[0.02] p-8 rounded-xl shadow-sm border border-white/5">
+              <div className="space-y-4 w-full max-w-md bg-white/[0.02] p-8 rounded-md shadow-sm border border-white/5">
                 {!isImporting && importStatus !== "done" ? (
                   <>
                     <div className="mx-auto w-12 h-12 bg-white/5 rounded-full flex items-center justify-center mb-4">
@@ -267,14 +284,14 @@ export function LeadInteractions({
                     </div>
                     <h4 className="text-base font-bold text-white mb-2 tracking-tight">Upload CSV File</h4>
                     <div className="relative group cursor-pointer">
-                      <input
-                        type="file"
-                        name="csv_file"
-                        accept=".csv,text/csv"
-                        onChange={handleCsvChange}
-                        className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10"
-                      />
-                      <div className="border-2 border-dashed border-white/10 rounded-xl py-10 px-4 group-hover:border-[#2383E2]/50 group-hover:bg-[#2383E2]/5 transition-all text-center">
+                        <input
+                          type="file"
+                          name="csv_file"
+                          accept=".csv,text/csv"
+                          onChange={handleCsvChange}
+                          className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10"
+                        />
+                        <div className="border border-dashed border-white/10 rounded-md py-10 px-4 group-hover:border-[#2383E2]/50 group-hover:bg-[#2383E2]/5 transition-all text-center">
                         <p className="text-sm font-semibold text-white/60">Click to choose or drag & drop</p>
                       </div>
                     </div>
@@ -297,28 +314,57 @@ export function LeadInteractions({
                          <div className="h-12 w-12 rounded-full bg-emerald-500/10 flex items-center justify-center animate-in zoom-in duration-300">
                            <Check className="h-6 w-6 text-emerald-400" />
                          </div>
+                       ) : importStatus === "confirming" ? (
+                         <div className="h-12 w-12 rounded-full bg-[#2383E2]/10 flex items-center justify-center animate-in zoom-in duration-300">
+                           <Check className="h-6 w-6 text-[#2383E2]" />
+                         </div>
                        ) : (
                          <div className="h-12 w-12 rounded-full bg-white/5 flex items-center justify-center">
                            <Loader2 className="h-6 w-6 text-[#2383E2] animate-spin" />
                          </div>
                        )}
                        <p className="text-sm font-bold text-white">
-                         {importStatus === "reading" ? "Reading file..." : 
+                         {importStatus === "confirming" ? `${pendingRows.length} Leads Found` :
+                          importStatus === "reading" ? "Reading file..." : 
                           importStatus === "processing" ? `Importing leads (${importProgress}%)` : 
                           importStatus === "done" ? "Import complete!" : 
                           "An error occurred."}
                        </p>
+                       {importStatus === "confirming" && (
+                         <p className="text-xs text-white/40">Ready to import into this campaign.</p>
+                       )}
                     </div>
 
-                    <div className="w-full h-2 bg-white/5 rounded-full overflow-hidden">
-                      <div 
-                        className={cn(
-                          "h-full transition-all duration-300 ease-out",
-                          importStatus === "done" ? "bg-emerald-500" : "bg-[#2383E2]"
-                        )}
-                        style={{ width: `${importProgress}%` }}
-                      />
-                    </div>
+                    {importStatus === "confirming" ? (
+                      <div className="flex gap-3 justify-center pt-2">
+                        <button 
+                          onClick={handleConfirmImport}
+                          className="crm-primary-button px-6"
+                        >
+                          Start Import
+                        </button>
+                        <button 
+                          onClick={() => {
+                            setIsImporting(false);
+                            setImportStatus("idle");
+                            setPendingRows([]);
+                          }}
+                          className="crm-secondary-button"
+                        >
+                          Cancel
+                        </button>
+                      </div>
+                    ) : (
+                      <div className="w-full h-2 bg-white/5 rounded-full overflow-hidden">
+                        <div 
+                          className={cn(
+                            "h-full transition-all duration-300 ease-out",
+                            importStatus === "done" ? "bg-emerald-500" : "bg-[#2383E2]"
+                          )}
+                          style={{ width: `${importProgress}%` }}
+                        />
+                      </div>
+                    )}
                     
                     {importStatus === "processing" && (
                       <p className="text-[10px] text-white/20 uppercase font-black tracking-widest">Please do not close this window</p>
@@ -353,12 +399,11 @@ export function LeadInteractions({
       {/* Lead Detail Slide-Over */}
       {selectedLead && (
         <>
-          <div className="fixed inset-0 z-40 bg-black/60 backdrop-blur-sm" onClick={onClearLead} />
-          <div className="fixed inset-y-6 right-6 z-50 flex w-full max-w-md flex-col bg-[#111111]/95 shadow-[0_30px_60px_-15px_rgba(0,0,0,0.7)] animate-in slide-in-from-right duration-300 border border-white/10 rounded-2xl overflow-hidden backdrop-blur-xl">
+          <div className="fixed inset-y-6 right-6 z-50 flex w-1/2 flex-col bg-[#111111] shadow-[0_30px_60px_-15px_rgba(0,0,0,0.7)] animate-in slide-in-from-right duration-300 border border-white/10 rounded-xl overflow-hidden crm-lead-panel">
             {/* Header */}
             <div className="flex items-start justify-between border-b border-white/5 px-6 py-5 bg-white/[0.02]">
               <div className="flex items-center gap-3">
-                <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-white/5">
+                <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-white/5">
                   <Building2 className="h-5 w-5 text-white/40" />
                 </div>
                 <div>
@@ -368,6 +413,7 @@ export function LeadInteractions({
                         name="company_name"
                         defaultValue={selectedLead.company?.name ?? ""}
                         form="edit-lead-form"
+                        onChange={() => setHasUnsavedChanges(true)}
                         className="bg-white/5 border border-white/10 rounded px-2 py-1 text-sm text-white font-bold outline-none focus:border-[#2383E2]"
                       />
                     ) : (
@@ -380,6 +426,7 @@ export function LeadInteractions({
                       defaultValue={selectedLead.company?.industry ?? ""}
                       form="edit-lead-form"
                       placeholder="Industry"
+                      onChange={() => setHasUnsavedChanges(true)}
                       className="mt-1 bg-white/5 border border-white/10 rounded px-2 py-0.5 text-[10px] text-white/30 font-bold outline-none focus:border-[#2383E2]"
                     />
                   ) : (
@@ -408,7 +455,10 @@ export function LeadInteractions({
                       {isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
                     </button>
                     <button 
-                      onClick={() => setIsEditing(false)}
+                      onClick={() => {
+                        setIsEditing(false);
+                        setHasUnsavedChanges(false);
+                      }}
                       className="p-1.5 text-white/20 hover:bg-white/5 hover:text-white rounded-lg transition-colors"
                       title="Cancel"
                     >
@@ -430,45 +480,83 @@ export function LeadInteractions({
                   startTransition(async () => {
                     await updateCompanyAction(formData);
                     
-                    // Also update status if changed
+                    // Also update status and interest if changed
                     const statusFormData = new FormData();
                     statusFormData.append("campaign_id", campaignId);
                     statusFormData.append("company_id", selectedLead.company_id);
                     statusFormData.append("status", formData.get("campaign_status") as string);
+                    statusFormData.append("interest_level", formData.get("interest_level") as string);
                     await updateLeadStatusAction(statusFormData);
                     
                     setIsEditing(false);
+                    setHasUnsavedChanges(false);
                     router.refresh();
                   });
                 }}
               />
 
-               <div className="grid grid-cols-2 gap-4">
-                  <div className="p-4 bg-white/[0.03] rounded-xl border border-white/5">
-                    <p className="text-[10px] font-black text-white/20 uppercase tracking-[0.2em] mb-2">Status</p>
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="p-4 bg-white/[0.03] rounded-lg border border-white/5">
+                    <p className="text-[10px] font-black text-white/20 uppercase tracking-[0.2em] mb-2">Sales Status</p>
                     {isEditing ? (
-                      <select
-                        name="campaign_status"
-                        defaultValue={selectedLead.campaign_status ?? "Added"}
-                        className="w-full bg-white/5 border border-white/10 rounded px-2 py-1 text-xs text-[#2383E2] font-black outline-none focus:border-[#2383E2]"
-                        form="edit-lead-form"
-                      >
-                        <option value="Added">Added</option>
-                        <option value="Qualified">Qualified</option>
-                        <option value="Contacted">Contacted</option>
-                        <option value="Interested">Interested</option>
-                        <option value="Won">Won</option>
-                        <option value="Lost">Lost</option>
-                      </select>
+                      <div className="space-y-2">
+                        <input type="hidden" name="campaign_status" value={selectedLead.campaign_status ?? "Added"} form="edit-lead-form" />
+                        <NotionSelect
+                          options={SALES_STATUS_OPTIONS}
+                          value={selectedLead.campaign_status ?? "Added"}
+                          onChange={(val) => {
+                            // Update the hidden input
+                            const input = document.querySelector('input[name="campaign_status"]') as HTMLInputElement;
+                            if (input) input.value = val;
+                            setHasUnsavedChanges(true);
+                          }}
+                        />
+                      </div>
                     ) : (
-                      <p className="text-sm font-black text-[#2383E2] uppercase italic">{selectedLead.campaign_status ?? "Added"}</p>
+                      <div className="flex">
+                        <span className={cn(
+                          "px-2 py-0.5 rounded-sm text-[11px] font-bold uppercase tracking-wider border",
+                          SALES_STATUS_OPTIONS.find(o => o.value === (selectedLead.campaign_status ?? "Added"))?.color === "green" ? "bg-emerald-500/10 text-emerald-400 border-emerald-500/20" :
+                          SALES_STATUS_OPTIONS.find(o => o.value === (selectedLead.campaign_status ?? "Added"))?.color === "rose" ? "bg-rose-500/10 text-rose-400 border-rose-500/20" :
+                          "bg-blue-500/10 text-blue-400 border-blue-500/20"
+                        )}>
+                          {selectedLead.campaign_status ?? "Added"}
+                        </span>
+                      </div>
                     )}
                   </div>
-                  <div className="p-4 bg-white/[0.03] rounded-xl border border-white/5">
-                    <p className="text-[10px] font-black text-white/20 uppercase tracking-[0.2em] mb-2">Deals</p>
-                    <p className="text-sm font-black text-white italic">{selectedLead.deal_count}</p>
+                  <div className="p-4 bg-white/[0.03] rounded-lg border border-white/5">
+                    <p className="text-[10px] font-black text-white/20 uppercase tracking-[0.2em] mb-2">Interest (Temp)</p>
+                    {isEditing ? (
+                      <div className="space-y-2">
+                        <input type="hidden" name="interest_level" value={selectedLead.interest_level ?? "ICE Cold"} form="edit-lead-form" />
+                        <NotionSelect
+                          options={INTEREST_LEVEL_OPTIONS}
+                          value={selectedLead.interest_level ?? "ICE Cold"}
+                          onChange={(val) => {
+                            // Update the hidden input
+                            const input = document.querySelector('input[name="interest_level"]') as HTMLInputElement;
+                            if (input) input.value = val;
+                            setHasUnsavedChanges(true);
+                          }}
+                        />
+                      </div>
+                    ) : (
+                      <div className="flex">
+                        <span className={cn(
+                          "px-2 py-0.5 rounded-sm text-[11px] font-bold uppercase tracking-wider border",
+                          selectedLead.interest_level === "HOT" ? "bg-emerald-500/10 text-emerald-400 border-emerald-500/30" :
+                          selectedLead.interest_level === "Warm" ? "bg-amber-500/10 text-amber-500 border-amber-500/20" :
+                          selectedLead.interest_level === "Room temp" ? "bg-white/5 text-white/40 border-white/10" :
+                          selectedLead.interest_level === "Cold" ? "bg-purple-500/10 text-purple-400 border-purple-500/20" :
+                          "bg-blue-500/10 text-blue-400 border-blue-500/20"
+                        )}>
+                          {selectedLead.interest_level ?? "ICE Cold"}
+                        </span>
+                      </div>
+                    )}
                   </div>
-               </div>
+                </div>
 
                <div className="space-y-4">
                   <h4 className="text-[10px] font-black uppercase tracking-[0.2em] text-white/20">Company Details</h4>
@@ -478,7 +566,7 @@ export function LeadInteractions({
                       { icon: Users, label: "Size", name: "company_size", value: selectedLead.company?.company_size },
                       { icon: Globe, label: "Website", name: "website", value: selectedLead.company?.website }
                     ].map((item) => (
-                      <div key={item.label} className="flex items-center justify-between gap-3 text-sm text-white/60 bg-white/[0.03] p-3 rounded-xl border border-white/5 group">
+                      <div key={item.label} className="flex items-center justify-between gap-3 text-sm text-white/60 bg-white/[0.03] p-3 rounded-lg border border-white/5 group">
                         <div className="flex items-center gap-3 overflow-hidden flex-1">
                           <div className="h-8 w-8 rounded-lg flex items-center justify-center bg-white/5 shrink-0">
                             <item.icon className="h-4 w-4 text-white/20" />
@@ -489,6 +577,7 @@ export function LeadInteractions({
                               defaultValue={item.value ?? ""}
                               placeholder={item.label}
                               form="edit-lead-form"
+                              onChange={() => setHasUnsavedChanges(true)}
                               className="bg-white/5 border border-white/10 rounded px-2 py-1 text-xs text-white/70 outline-none focus:border-[#2383E2] w-full"
                             />
                           ) : (
@@ -522,7 +611,7 @@ export function LeadInteractions({
                   </div>
 
                   {isAddingContact && (
-                    <div className="bg-[#2383E2]/5 border border-[#2383E2]/20 p-4 rounded-xl space-y-3 animate-in fade-in slide-in-from-top-2">
+                    <div className="bg-[#2383E2]/5 border border-[#2383E2]/20 p-4 rounded-lg space-y-3 animate-in fade-in slide-in-from-top-2">
                       <input
                         placeholder="Full Name"
                         name="full_name"
@@ -575,7 +664,7 @@ export function LeadInteractions({
 
                   <div className="space-y-4">
                     {(selectedLead.company?.contacts ?? []).map((contact, idx) => (
-                      <div key={contact.id && contact.id !== 'undefined' ? contact.id : `contact-${idx}`} className="border border-white/5 bg-white/[0.01] rounded-xl p-4 space-y-4 group/contact relative">
+                      <div key={contact.id && contact.id !== 'undefined' ? contact.id : `contact-${idx}`} className="border border-white/5 bg-white/[0.01] rounded-lg p-4 space-y-4 group/contact relative">
                          <div className="flex items-start justify-between">
                             <div className="space-y-1">
                               <h3 className="text-sm font-black text-white/90 tracking-tight italic uppercase">{contact.full_name}</h3>
@@ -615,7 +704,7 @@ export function LeadInteractions({
 
                <div className="space-y-4">
                  <h4 className="text-[10px] font-black uppercase tracking-[0.2em] text-white/20">Intelligence</h4>
-                 <div className="bg-white/[0.03] border border-white/5 rounded-xl p-4">
+                 <div className="bg-white/[0.03] border border-white/5 rounded-lg p-4">
                     <p className="text-[10px] font-black uppercase tracking-widest text-[#2383E2]/60 mb-2">Notes & Context</p>
                     {isEditing ? (
                       <textarea
@@ -623,6 +712,7 @@ export function LeadInteractions({
                         defaultValue={selectedLead.company?.notes ?? ""}
                         form="edit-lead-form"
                         rows={4}
+                        onChange={() => setHasUnsavedChanges(true)}
                         className="w-full bg-white/5 border border-white/10 rounded px-3 py-2 text-[11px] text-white/50 font-bold outline-none focus:border-[#2383E2] resize-none"
                       />
                     ) : (
@@ -633,13 +723,14 @@ export function LeadInteractions({
                  </div>
                </div>
 
-               <div className="p-4 bg-white/[0.03] rounded-xl border border-white/5">
+               <div className="p-4 bg-white/[0.03] rounded-lg border border-white/5">
                  <p className="text-[10px] font-black text-white/20 uppercase tracking-[0.2em] mb-2">Priority</p>
                  {isEditing ? (
                     <select
                       name="priority"
                       defaultValue={selectedLead.company?.priority ?? "Medium"}
                       form="edit-lead-form"
+                      onChange={() => setHasUnsavedChanges(true)}
                       className="w-full bg-white/5 border border-white/10 rounded px-2 py-1 text-xs text-white/90 font-black outline-none focus:border-[#2383E2]"
                     >
                       <option value="Low">Low</option>

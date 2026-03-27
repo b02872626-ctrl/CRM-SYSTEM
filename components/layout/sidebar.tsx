@@ -5,7 +5,7 @@ import { usePathname } from "next/navigation";
 import { cn } from "@/lib/utils";
 import { navigationItems } from "@/lib/navigation";
 import { LogoutButton } from "@/components/auth/logout-button";
-import { ChevronLeft, ChevronRight, Settings, User, ExternalLink } from "lucide-react";
+import { ChevronLeft, ChevronRight, Settings, User, ExternalLink, Home, Folder, CornerDownRight, Menu } from "lucide-react";
 
 type SidebarProps = {
   isOpen: boolean;
@@ -49,6 +49,25 @@ export function Sidebar({ isOpen, onToggle, userEmail, userRole, userName }: Sid
         "flex h-full flex-col overflow-hidden px-3 py-4 pt-14",
         !isOpen && "lg:items-center lg:px-2"
       )}>
+        {/* Toggle Button at the top */}
+        <button
+          onClick={onToggle}
+          className={cn(
+            "mb-4 flex items-center justify-center rounded-sm bg-white/5 text-white/30 transition-colors hover:bg-white/10 hover:text-white/60 border border-white/5 outline-none ring-0",
+            isOpen ? "w-fit px-2 py-1 gap-2 self-start ml-1" : "w-8 h-8 self-center"
+          )}
+          title={isOpen ? "Collapse Sidebar" : "Expand Sidebar"}
+        >
+          {isOpen ? (
+            <>
+              <ChevronLeft className="h-3 w-3" />
+              <span className="text-[9px] font-bold uppercase tracking-widest">Collapse</span>
+            </>
+          ) : (
+            <Menu className="h-4 w-4" />
+          )}
+        </button>
+
         {/* Account Section */}
         <div className={cn(
           "mb-6 flex flex-col gap-2 rounded-md bg-white/5 p-2.5 transition-all duration-300 border border-white/5",
@@ -82,7 +101,7 @@ export function Sidebar({ isOpen, onToggle, userEmail, userRole, userName }: Sid
             <p className="mb-2 text-[10px] font-bold uppercase tracking-wider text-white/20">Navigation</p>
             <div className="flex flex-col text-[11px] font-medium text-white/50">
               <Link href="/dashboard" className="flex items-center gap-2 py-1 hover:text-white transition-colors">
-                <span className="text-white/10">□</span>
+                <Home className="h-3 w-3 text-white/10" />
                 <span>Home</span>
               </Link>
               {breadcrumbs.map((bc, i) => (
@@ -98,7 +117,7 @@ export function Sidebar({ isOpen, onToggle, userEmail, userRole, userName }: Sid
                       i === breadcrumbs.length - 1 ? "text-white font-bold" : "text-white/50"
                     )}
                   >
-                    <span className="text-white/10">└</span>
+                    <CornerDownRight className="h-2.5 w-2.5 text-white/10" />
                     <span className="truncate">{bc.label}</span>
                   </Link>
                 </div>
@@ -126,12 +145,14 @@ export function Sidebar({ isOpen, onToggle, userEmail, userRole, userName }: Sid
                         : "text-white/60 hover:bg-white/5 hover:text-white"
                     )}
                   >
-                    <span className={cn(
-                      "h-1.5 w-1.5 shrink-0 rounded-[1px] border transition-all duration-300",
-                      isActive 
-                        ? "border-white bg-white/10 shadow-[0_0_8px_rgba(255,255,255,0.3)]" 
-                        : "border-white/10 bg-transparent"
-                    )} />
+                    {item.icon && (
+                      <item.icon className={cn(
+                        "h-4 w-4 shrink-0 transition-all duration-300",
+                        isActive 
+                          ? "text-white drop-shadow-[0_0_8px_rgba(255,255,255,0.5)]" 
+                          : "text-white/20 group-hover:text-white/40"
+                      )} />
+                    )}
                     {isOpen && <span>{item.label}</span>}
                   </Link>
                 );
@@ -152,26 +173,6 @@ export function Sidebar({ isOpen, onToggle, userEmail, userRole, userName }: Sid
               </Link>
             </div>
           )}
-        </div>
-
-        {/* Sidebar Footer / Collapse Toggle */}
-        <div className="mt-8 border-t border-white/5 pt-4">
-          <button
-            onClick={onToggle}
-            className={cn(
-              "flex w-full items-center justify-center rounded-sm bg-white/5 py-2 text-white/40 transition-colors hover:bg-white/10 hover:text-white/70",
-              !isOpen && "lg:px-0"
-            )}
-          >
-            {isOpen ? (
-              <div className="flex items-center gap-2 text-xs font-semibold">
-                <ChevronLeft className="h-4 w-4" />
-                <span>Collapse</span>
-              </div>
-            ) : (
-              <ChevronRight className="h-4 w-4" />
-            )}
-          </button>
         </div>
       </div>
     </aside>

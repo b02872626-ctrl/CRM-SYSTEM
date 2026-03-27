@@ -1,12 +1,18 @@
 "use client";
 
-import { Mail, Phone, MapPin, Users } from "lucide-react";
+import { Mail, Phone, MapPin, Users, Loader2 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { NotionSelect } from "@/components/ui/notion-select";
+import { SALES_STATUS_OPTIONS, INTEREST_LEVEL_OPTIONS } from "@/features/campaigns/constants";
+import { useTransition } from "react";
+import { updateLeadStatusAction } from "@/features/campaigns/actions";
+import { useRouter } from "next/navigation";
 
 type Lead = {
   id: string;
   company_id: string;
   campaign_status: string | null;
+  interest_level: string | null;
   added_at: string | null;
   notes: string | null;
   company: {
@@ -40,6 +46,7 @@ type Lead = {
 
 type LeadsTableProps = {
   leads: Lead[];
+  campaignId: string;
   onSelectLead: (lead: Lead) => void;
   selectedIds: Set<string>;
   onToggleLead: (id: string) => void;
@@ -48,11 +55,14 @@ type LeadsTableProps = {
 
 export function LeadsTable({ 
   leads, 
+  campaignId,
   onSelectLead, 
   selectedIds, 
   onToggleLead, 
   onSelectAll 
 }: LeadsTableProps) {
+  const router = useRouter();
+  const [isPending, startTransition] = useTransition();
   const allIds = leads.map(l => l.company_id);
   const isAllSelected = leads.length > 0 && leads.every(l => selectedIds.has(l.company_id));
 
@@ -64,119 +74,108 @@ export function LeadsTable({
     }
   };
 
+  const handleStatusChange = async (lead: Lead, field: "status" | "interest", value: string) => {
+    startTransition(async () => {
+      const formData = new FormData();
+      formData.append("campaign_id", campaignId);
+      formData.append("company_id", lead.company_id);
+      
+      if (field === "status") {
+        formData.append("status", value);
+        formData.append("interest_level", lead.interest_level ?? "ICE Cold");
+      } else {
+        formData.append("status", lead.campaign_status ?? "Added");
+        formData.append("interest_level", value);
+      }
+
+      await updateLeadStatusAction(formData);
+      router.refresh();
+    });
+  };
+
   return (
     <div className="overflow-x-auto">
-      <table className="min-w-full">
+      <table className="w-full border-collapse">
         <thead>
-          <tr className="border-b border-white/5">
-            <th className="px-4 py-3 text-left">
+          <tr className="bg-white/[0.02]">
+            <th className="px-4 py-3 text-left border-b border-r border-white/10 w-10">
               <input 
                 type="checkbox" 
-                className="crm-checkbox" 
+                className="crm-checkbox align-middle" 
                 checked={isAllSelected}
                 onChange={handleSelectAllChange}
               />
             </th>
-            <th className="px-4 py-2 text-left text-[10px] font-black uppercase tracking-[0.2em] text-white/50">Lead / Company</th>
-            <th className="px-4 py-2 text-left text-[10px] font-black uppercase tracking-[0.2em] text-white/50">Primary Contact</th>
-            <th className="px-4 py-2 text-left text-[10px] font-black uppercase tracking-[0.2em] text-white/50">Contact Info</th>
-            <th className="px-4 py-2 text-left text-[10px] font-black uppercase tracking-[0.2em] text-white/50">Company Details</th>
-            <th className="px-4 py-3 text-left text-[10px] font-black uppercase tracking-[0.2em] text-white/50">Status</th>
-            <th className="px-4 py-2 text-center text-[10px] font-black uppercase tracking-[0.2em] text-white/50">Deals</th>
+            <th className="px-4 py-3 text-left border-b border-r border-white/10 text-[10px] font-black uppercase tracking-[0.2em] text-white/40">Lead / Company</th>
+            <th className="px-4 py-3 text-left border-b border-r border-white/10 text-[10px] font-black uppercase tracking-[0.2em] text-white/40 text-left">Primary Contact</th>
+            <th className="px-4 py-3 text-left border-b border-r border-white/10 text-[10px] font-black uppercase tracking-[0.2em] text-white/40">Status</th>
+            <th className="px-4 py-3 text-left border-b border-r border-white/10 text-[10px] font-black uppercase tracking-[0.2em] text-white/40">Interest</th>
+            <th className="px-4 py-3 text-center border-b border-white/10 text-[10px] font-black uppercase tracking-[0.2em] text-white/40">Deals</th>
           </tr>
         </thead>
-        <tbody className="divide-y divide-white/5 bg-transparent">
+        <tbody className="bg-transparent">
           {leads.map((item) => (
             <tr 
               key={item.id} 
+              data-lead-row="true"
               className={cn(
-                "hover:bg-white/[0.03] transition-colors cursor-pointer group",
+                "group cursor-pointer hover:bg-white/[0.02] transition-colors",
+                "border-b border-white/5",
                 selectedIds.has(item.company_id) ? "bg-[#2383E2]/10" : ""
               )}
               onClick={() => onSelectLead(item)}
             >
-              <td className="px-4 py-1.5 align-middle" onClick={(e) => e.stopPropagation()}>
+              <td className="px-4 py-2.5 align-top border-b border-r border-white/10" onClick={(e) => e.stopPropagation()}>
                 <input 
                   type="checkbox" 
-                  className="crm-checkbox" 
+                  className="crm-checkbox mt-0.5" 
                   checked={selectedIds.has(item.company_id)}
                   onChange={() => onToggleLead(item.company_id)}
                 />
               </td>
-              <td className="px-4 py-1.5 align-middle">
+              <td className="px-4 py-2.5 align-top border-b border-r border-white/10 max-w-[200px]">
                 {item.company ? (
-                  <div className="text-left">
-                    <span className="text-sm font-semibold text-white/90 group-hover:text-[#2383E2] transition-colors uppercase tracking-tight">
+                  <div className="text-left overflow-hidden">
+                    <div className="text-[13px] font-medium text-white/90 group-hover:text-[#2383E2] transition-colors uppercase tracking-tight truncate whitespace-nowrap" title={item.company.name}>
                       {item.company.name}
-                    </span>
-                    <p className="text-[10px] font-semibold text-white/30 uppercase tracking-[0.1em]">{item.company.industry ?? "No industry"}</p>
+                    </div>
+                    <p className="text-[10px] font-medium text-white/20 uppercase tracking-[0.1em] truncate whitespace-nowrap">{item.company.industry ?? "No industry"}</p>
                   </div>
                 ) : (
                   <span className="text-sm text-white/50">Unknown</span>
                 )}
               </td>
-              <td className="px-4 py-1.5 align-middle">
+              <td className="px-4 py-2.5 align-top border-b border-r border-white/10 max-w-[180px]">
                 {item.primary_contact ? (
-                  <div className="text-left">
-                    <p className="text-sm font-bold text-white/90">{item.primary_contact.full_name}</p>
-                    <p className="text-[10px] font-bold text-white/20 uppercase tracking-wider">{item.primary_contact.role_title ?? "Decision Maker"}</p>
+                  <div className="text-left overflow-hidden">
+                    <p className="text-[13px] font-medium text-white/90 truncate whitespace-nowrap" title={item.primary_contact.full_name}>
+                      {item.primary_contact.full_name}
+                    </p>
+                    <p className="text-[10px] font-medium text-white/20 uppercase tracking-wider truncate whitespace-nowrap">{item.primary_contact.role_title ?? "Decision Maker"}</p>
                   </div>
                 ) : (
-                  <span className="text-sm text-white/20 italic">Not set</span>
+                  <span className="text-[13px] text-white/20 italic">Not set</span>
                 )}
               </td>
-              <td className="px-4 py-1.5 align-middle">
-                {item.primary_contact && (item.primary_contact.email || item.primary_contact.phone) ? (
-                  <div className="space-y-1.5 min-w-[140px] text-left">
-                    {item.primary_contact.email && (
-                      <p className="text-xs text-white/40 flex items-center gap-1.5 truncate">
-                        <Mail className="h-3.5 w-3.5 text-white/10 shrink-0" />
-                        <span className="truncate">{item.primary_contact.email}</span>
-                      </p>
-                    )}
-                    {item.primary_contact.phone && (
-                      <p className="text-xs text-white/40 flex items-center gap-1.5 truncate">
-                        <Phone className="h-3.5 w-3.5 text-white/10 shrink-0" />
-                        <span className="truncate">{item.primary_contact.phone}</span>
-                      </p>
-                    )}
-                  </div>
-                ) : (
-                  <span className="text-xs text-white/20 italic">No contact info</span>
-                )}
+              <td className="px-4 py-2.5 align-top border-b border-r border-white/10 min-w-[140px]" onClick={(e) => e.stopPropagation()}>
+                <NotionSelect
+                  options={SALES_STATUS_OPTIONS}
+                  value={item.campaign_status ?? "Added"}
+                  onChange={(val) => handleStatusChange(item, "status", val)}
+                  disabled={isPending}
+                />
               </td>
-              <td className="px-4 py-1.5 align-middle">
-                <div className="space-y-1.5 text-left">
-                  {item.company?.location ? (
-                    <p className="text-xs text-white/40 flex items-center gap-1.5">
-                      <MapPin className="h-3.5 w-3.5 text-white/10 shrink-0" />
-                      <span className="truncate max-w-[120px]" title={item.company.location}>{item.company.location}</span>
-                    </p>
-                  ) : null}
-                  {item.company?.company_size ? (
-                    <p className="text-xs text-white/40 flex items-center gap-1.5">
-                      <Users className="h-3.5 w-3.5 text-white/10 shrink-0" />
-                      <span>{item.company.company_size}</span>
-                    </p>
-                  ) : null}
-                  {!item.company?.location && !item.company?.company_size && (
-                    <span className="text-xs text-white/20 italic">No details</span>
-                  )}
-                </div>
+              <td className="px-4 py-2.5 align-top border-b border-r border-white/10 min-w-[140px]" onClick={(e) => e.stopPropagation()}>
+                <NotionSelect
+                  options={INTEREST_LEVEL_OPTIONS}
+                  value={item.interest_level ?? "ICE Cold"}
+                  onChange={(val) => handleStatusChange(item, "interest", val)}
+                  disabled={isPending}
+                />
               </td>
-              <td className="px-4 py-1.5 align-middle">
-                <span className={cn(
-                  "inline-flex rounded-sm px-2 py-0.5 text-[11px] font-bold border shadow-sm",
-                  item.campaign_status === "Won" ? "bg-emerald-500/10 text-emerald-400 border-emerald-500/20" :
-                  item.campaign_status === "Lost" ? "bg-rose-500/10 text-rose-400 border-rose-500/20" :
-                  "bg-white/5 text-white/60 border-white/10"
-                )}>
-                  {item.campaign_status ?? "Active"}
-                </span>
-              </td>
-              <td className="px-4 py-1.5 align-middle text-center text-sm font-bold text-white/40">
+              <td className="px-4 py-2.5 align-top border-b text-center border-white/10 text-[13px] font-medium text-white/40">
                 {item.deal_count > 0 ? (
-                  <span className="text-[#2383E2] font-black">{item.deal_count}</span>
+                  <span className="text-[#2383E2]">{item.deal_count}</span>
                 ) : (
                   "0"
                 )}

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, ReactNode } from "react";
+import { useState, ReactNode, useEffect, useRef } from "react";
 import { LeadsTable } from "./leads-table";
 import { LeadInteractions } from "./lead-interactions";
 import { BulkActionsBar } from "./bulk-actions-bar";
@@ -10,6 +10,7 @@ type Lead = {
   id: string;
   company_id: string;
   campaign_status: string | null;
+  interest_level: string | null;
   added_at: string | null;
   notes: string | null;
   company: {
@@ -66,6 +67,14 @@ export function CampaignLeadsSection({
 }: CampaignLeadsSectionProps) {
   const [selectedLead, setSelectedLead] = useState<Lead | null>(null);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
+
+  const confirmClose = () => {
+    if (hasUnsavedChanges) {
+      return window.confirm("Save before closing?");
+    }
+    return true;
+  };
 
   const handleToggleLead = (id: string) => {
     const newSelected = new Set(selectedIds);
@@ -76,6 +85,33 @@ export function CampaignLeadsSection({
     }
     setSelectedIds(newSelected);
   };
+
+  const containerRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (!selectedLead) return;
+
+      const target = event.target as HTMLElement;
+      
+      // Check if click is inside the detail panel
+      const isInsidePanel = target.closest('.crm-lead-panel');
+      if (isInsidePanel) return;
+
+      // Check if click is on another lead row (let the row's onClick handle it)
+      const isLeadRow = target.closest('[data-lead-row]');
+      if (isLeadRow) return;
+
+      // Clicked outside and not on a lead row - close the panel
+      if (confirmClose()) {
+        setSelectedLead(null);
+        setHasUnsavedChanges(false);
+      }
+    };
+
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, [selectedLead, hasUnsavedChanges]);
 
   const handleSelectAll = (ids: string[]) => {
     if (ids.length === 0) {
@@ -97,31 +133,41 @@ export function CampaignLeadsSection({
         campaignId={campaignId}
         availableCompanies={availableCompanies}
         selectedLead={selectedLead}
-        onClearLead={() => setSelectedLead(null)}
+        onClearLead={() => {
+          if (confirmClose()) {
+            setSelectedLead(null);
+            setHasUnsavedChanges(false);
+          }
+        }}
+        setHasUnsavedChanges={setHasUnsavedChanges}
       />
 
-      <div className="flex items-center justify-between gap-4 bg-white/[0.02] border border-white/5 p-4 rounded-xl">
-        <form className="flex-1 flex items-center gap-3">
+      <div className="flex items-center justify-between gap-4">
+        <form className="w-full max-w-xs flex items-center gap-2">
           <div className="relative flex-1 group">
             <input
               type="text"
               name="search"
               defaultValue={searchQuery}
-              placeholder="Search leads by company name..."
-              className="crm-input w-full pl-9"
+              placeholder="Search leads..."
+              className="crm-input h-8 w-full pl-8 text-[13px] bg-white/[0.02] border-white/5 focus:bg-white/[0.04]"
             />
-            <div className="absolute left-3 top-1/2 -translate-y-1/2 text-white/20 group-focus-within:text-[#2383E2] transition-colors">
-              <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="lucide lucide-search"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>
+            <div className="absolute left-2.5 top-1/2 -translate-y-1/2 text-white/20 group-focus-within:text-[#2383E2] transition-colors">
+              <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="lucide lucide-search"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>
             </div>
+            {searchQuery && (
+              <a 
+                href={`/campaigns/${campaignId}`} 
+                className="absolute right-2 top-1/2 -translate-y-1/2 text-white/20 hover:text-white/40 transition-colors"
+                title="Clear search"
+              >
+                <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="lucide lucide-x"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg>
+              </a>
+            )}
           </div>
-          <button type="submit" className="crm-primary-button whitespace-nowrap">
+          <button type="submit" className="h-8 px-3 text-[12px] font-bold rounded-[4px] bg-white/5 border border-white/10 text-white/60 hover:bg-white/10 hover:text-white transition-all active:scale-[0.98]">
             Search
           </button>
-          {searchQuery && (
-            <a href={`/campaigns/${campaignId}`} className="crm-secondary-button whitespace-nowrap">
-              Reset
-            </a>
-          )}
         </form>
       </div>
 
@@ -132,7 +178,13 @@ export function CampaignLeadsSection({
           <div className="flex flex-col gap-4">
             <LeadsTable 
               leads={linkedCompanies} 
-              onSelectLead={setSelectedLead}
+              campaignId={campaignId}
+              onSelectLead={(lead) => {
+                if (confirmClose()) {
+                  setSelectedLead(lead);
+                  setHasUnsavedChanges(false);
+                }
+              }}
               selectedIds={selectedIds}
               onToggleLead={handleToggleLead}
               onSelectAll={handleSelectAll}

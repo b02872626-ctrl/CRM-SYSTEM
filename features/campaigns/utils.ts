@@ -85,3 +85,10 @@ export function getStringList(formData: FormData, key: string) {
     .map((value) => String(value).trim())
     .filter(Boolean);
 }
+
+export function extractLinkedInUrl(text: string | null): string | null {
+  if (!text) return null;
+  // Match LinkedIn: followed by a URL (http/https) until a space or a pipe | or end of string
+  const match = text.match(/LinkedIn:\s*(https?:\/\/[^\s|]+)/i);
+  return match ? match[1] : null;
+}

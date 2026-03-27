@@ -43,16 +43,28 @@ export async function requireAuth() {
   return user;
 }
 
-export async function getCurrentProfile() {
+export const getCurrentProfile = cache(async () => {
   const supabase = await createClient();
   const user = await getCurrentUser();
 
   if (user?.id || user?.email) {
-    const filters = [];
-    if (user?.id) filters.push(`auth_user_id.eq.${user.id}`);
-    if (user?.email) filters.push(`email.ilike.${user.email.toLowerCase()}`);
+    // 1. Direct fetch by ID (fastest) - Use 'id' as it maps to auth user ID
+    if (user.id) {
+      const { data: profileById } = await supabase
+        .from("profiles")
+        .select("id, full_name, email, role")
+        .eq("id", user.id)
+        .maybeSingle();
+      
+      if (profileById) return profileById;
+    }
 
-    const { data: profileByOr, error: orError } = await supabase
+    // 2. OR fetch if ID didn't match (for legacy/migrated accounts)
+    const filters = [];
+    if (user.id) filters.push(`id.eq.${user.id}`);
+    if (user.email) filters.push(`email.ilike.${user.email.toLowerCase()}`);
+
+    const { data: profileByOr } = await supabase
       .from("profiles")
       .select("id, full_name, email, role")
       .or(filters.join(","))
@@ -71,15 +83,13 @@ export async function getCurrentProfile() {
       if (profileByEmail) return profileByEmail;
     }
 
-    console.log("No profile found for:", { id: user.id, email: user.email }, "using filters:", filters.join(","));
-
     // Fallback: If we have an Auth User but no DB Profile, return basic Auth data
     if (user) {
       return {
         id: user.id,
         email: user.email ?? "",
         full_name: user.email?.split("@")[0] ?? "User",
-        role: "sales" // Default role for new/unmapped users
+        role: "sales" as const
       };
     }
   }
@@ -87,10 +97,10 @@ export async function getCurrentProfile() {
   const { data } = await supabase
     .from("profiles")
     .select("id, full_name, email, role")
-    .eq("is_active", true)
     .order("created_at", { ascending: true })
     .limit(1)
     .maybeSingle();
 
   return data ?? null;
-}
+});
+

@@ -1,3 +1,4 @@
+import { cache } from "react";
 import { createClient } from "@/lib/supabase/server";
 
 function startOfTodayUtc() {
@@ -5,7 +6,7 @@ function startOfTodayUtc() {
   return new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate()));
 }
 
-export async function getDashboardData() {
+export const getDashboardData = cache(async () => {
   const supabase = await createClient();
   const today = startOfTodayUtc();
   const tomorrow = new Date(today);
@@ -69,4 +70,4 @@ export async function getDashboardData() {
     overdueCount: overdueError ? 0 : overdueCount ?? 0,
     recentRecords
   };
-}
+});
