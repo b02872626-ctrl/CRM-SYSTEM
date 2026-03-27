@@ -23,6 +23,7 @@ type CampaignDetailProps = {
     id: string;
     company_id: string;
     campaign_status: string | null;
+    interest_level: string | null;
     added_at: string | null;
     notes: string | null;
     company: {
