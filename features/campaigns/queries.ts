@@ -262,6 +262,7 @@ export async function getCampaignCompanies(campaignId: string, page = 1, searchQ
             location: getString(company.location),
             source: getString(company.source),
             priority: getString(company.priority),
+            status: String(company.status ?? "target"),
             website: getString(company.website ?? company.domain),
             notes: getString(company.notes),
             hiring_signal: getString(company.hiring_signal),
