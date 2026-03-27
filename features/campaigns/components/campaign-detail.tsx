@@ -37,6 +37,13 @@ type CampaignDetailProps = {
       website: string | null;
       notes: string | null;
       hiring_signal: string | null;
+      contacts: Array<{
+        id: string;
+        full_name: string;
+        role_title: string | null;
+        email: string | null;
+        phone: string | null;
+      }>;
     } | null;
     primary_contact: {
       full_name: string;
