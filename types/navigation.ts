@@ -4,4 +4,5 @@ export type NavigationItem = {
   title: string;
   description: string;
   allowedRoles?: string[];
+  icon?: React.ElementType;
 };

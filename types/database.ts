@@ -150,6 +150,7 @@ export type Database = {
           added_at: string;
           campaign_id: string;
           campaign_status: string | null;
+          interest_level: string | null;
           company_id: string;
           created_at: string;
           id: string;
@@ -160,6 +161,7 @@ export type Database = {
           added_at?: string;
           campaign_id: string;
           campaign_status?: string | null;
+          interest_level?: string | null;
           company_id: string;
           created_at?: string;
           id?: string;
@@ -170,6 +172,7 @@ export type Database = {
           added_at?: string;
           campaign_id?: string;
           campaign_status?: string | null;
+          interest_level?: string | null;
           company_id?: string;
           created_at?: string;
           id?: string;

@@ -1,4 +1,5 @@
 import { createClient } from "@/lib/supabase/server";
+import { cache } from "react";
 
 const CAMPAIGNS_PAGE_SIZE = 25;
 const CAMPAIGN_COMPANIES_PAGE_SIZE = 50;
@@ -45,7 +46,7 @@ async function getProfilesByIds(ids: string[]) {
   );
 }
 
-export async function getCampaignFilterOptions() {
+export const getCampaignFilterOptions = cache(async () => {
   const supabase = await createClient();
   const { data, error } = await supabase
     .from("profiles")
@@ -64,9 +65,9 @@ export async function getCampaignFilterOptions() {
       full_name: String(profile.full_name ?? profile.email ?? "Unknown user")
     }))
   };
-}
+});
 
-export async function getCampaigns(filters: CampaignFilters = {}, page = 1, profile?: { id: string; role: string | null } | null) {
+export const getCampaigns = cache(async (filters: CampaignFilters = {}, page = 1, profile?: { id: string; role: string | null } | null) => {
   const supabase = await createClient();
   const from = (page - 1) * CAMPAIGNS_PAGE_SIZE;
   const to = from + CAMPAIGNS_PAGE_SIZE - 1;
@@ -148,9 +149,9 @@ export async function getCampaigns(filters: CampaignFilters = {}, page = 1, prof
     totalCount: campaignsResult.count ?? 0,
     pageSize: CAMPAIGNS_PAGE_SIZE
   };
-}
+});
 
-export async function getCampaignById(id: string) {
+export const getCampaignById = cache(async (id: string) => {
   const supabase = await createClient();
   const { data, error } = await supabase
     .from("campaigns")
@@ -183,9 +184,9 @@ export async function getCampaignById(id: string) {
     end_date: getString(campaign.end_date),
     notes: getString(campaign.notes)
   };
-}
+});
 
-export async function getCampaignCompanies(campaignId: string, page = 1, searchQuery?: string) {
+export const getCampaignCompanies = cache(async (campaignId: string, page = 1, searchQuery?: string) => {
   const supabase = await createClient();
   const from = (page - 1) * CAMPAIGN_COMPANIES_PAGE_SIZE;
   const to = from + CAMPAIGN_COMPANIES_PAGE_SIZE - 1;
@@ -251,6 +252,7 @@ export async function getCampaignCompanies(campaignId: string, page = 1, searchQ
       id: String(link.id ?? ""),
       company_id: companyId,
       campaign_status: getString(link.campaign_status),
+      interest_level: getString((link as any).interest_level),
       added_at: getString(link.added_at),
       notes: getString(link.notes),
       company: company
@@ -285,9 +287,9 @@ export async function getCampaignCompanies(campaignId: string, page = 1, searchQ
     totalCount: count ?? 0,
     pageSize: CAMPAIGN_COMPANIES_PAGE_SIZE
   };
-}
+});
 
-export async function getCampaignMetrics(campaignId: string) {
+export const getCampaignMetrics = cache(async (campaignId: string) => {
   const supabase = await createClient();
 
   // Use the RPC for hardware-accelerated counts
@@ -315,7 +317,7 @@ export async function getCampaignMetrics(campaignId: string) {
     qualifiedCompanyCount: metrics.qualified_company_count,
     dealsCreatedCount: metrics.deals_created_count
   };
-}
+});
 
 export async function getAvailableCompaniesForCampaign(campaignId: string) {
   const supabase = await createClient();

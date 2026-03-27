@@ -1,4 +1,5 @@
 import "server-only";
+import { cache } from "react";
 
 import type { DealSeniority, DealStage, DealUrgency } from "@/types/database";
 import { createClient } from "@/lib/supabase/server";
@@ -11,7 +12,7 @@ export type DealFilters = {
   urgency?: DealUrgency | "all";
 };
 
-export async function getDealListFilterOptions() {
+export const getDealListFilterOptions = cache(async () => {
   const supabase = await createClient();
   const { data: recruiters, error: recruitersError } = await supabase
     .from("profiles")
@@ -32,9 +33,9 @@ export async function getDealListFilterOptions() {
       };
     })
   };
-}
+});
 
-export async function getDealFormOptions() {
+export const getDealFormOptions = cache(async () => {
   const supabase = await createClient();
   const [{ data: companies }, { data: recruiters }] = await Promise.all([
     supabase.from("companies").select("*").order("updated_at", { ascending: false }).limit(100),
@@ -55,9 +56,9 @@ export async function getDealFormOptions() {
       full_name: String(recruiter.full_name ?? recruiter.email ?? "Unknown user")
     }))
   };
-}
+});
 
-export async function getDeals(filters: DealFilters = {}, page = 1) {
+export const getDeals = cache(async (filters: DealFilters = {}, page = 1) => {
   const supabase = await createClient();
   const from = (page - 1) * DEALS_PAGE_SIZE;
   const to = from + DEALS_PAGE_SIZE - 1;
@@ -104,9 +105,9 @@ export async function getDeals(filters: DealFilters = {}, page = 1) {
     totalCount: count ?? 0,
     pageSize: DEALS_PAGE_SIZE
   };
-}
+});
 
-export async function getDealById(id: string) {
+export const getDealById = cache(async (id: string) => {
   const supabase = await createClient();
   const { data, error } = await supabase
     .from("deals")
@@ -144,7 +145,7 @@ export async function getDealById(id: string) {
     company: null,
     recruiter: null
   };
-}
+});
 
 export async function getDealCandidates(dealId: string) {
   const supabase = await createClient();

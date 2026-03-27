@@ -1,4 +1,5 @@
 import "server-only";
+import { cache } from "react";
 
 import type { CandidateStage } from "@/types/database";
 import { createClient } from "@/lib/supabase/server";
@@ -11,7 +12,7 @@ export type CandidateFilters = {
   deal?: string | "all";
 };
 
-export async function getCandidateListFilterOptions() {
+export const getCandidateListFilterOptions = cache(async () => {
   const supabase = await createClient();
 
   const [{ data: deals, error: dealsError }, { data: sourcesData, error: sourcesError }] =
@@ -53,9 +54,9 @@ export async function getCandidateListFilterOptions() {
     }),
     sources
   };
-}
+});
 
-export async function getCandidateFormOptions() {
+export const getCandidateFormOptions = cache(async () => {
   const supabase = await createClient();
   const [{ data: deals }, { data: recruiters }] = await Promise.all([
     supabase.from("deals").select("*").order("updated_at", { ascending: false }).limit(100),
@@ -76,9 +77,9 @@ export async function getCandidateFormOptions() {
       full_name: String(recruiter.full_name ?? recruiter.email ?? "Unknown user")
     }))
   };
-}
+});
 
-export async function getCandidates(filters: CandidateFilters = {}, page = 1) {
+export const getCandidates = cache(async (filters: CandidateFilters = {}, page = 1) => {
   const supabase = await createClient();
   const from = (page - 1) * CANDIDATES_PAGE_SIZE;
   const to = from + CANDIDATES_PAGE_SIZE - 1;
@@ -122,9 +123,9 @@ export async function getCandidates(filters: CandidateFilters = {}, page = 1) {
     totalCount: count ?? 0,
     pageSize: CANDIDATES_PAGE_SIZE
   };
-}
+});
 
-export async function getCandidateById(id: string) {
+export const getCandidateById = cache(async (id: string) => {
   const supabase = await createClient();
   const { data, error } = await supabase
     .from("candidates")
@@ -160,7 +161,7 @@ export async function getCandidateById(id: string) {
     recruiter: null,
     applications: []
   };
-}
+});
 
 export async function getCandidateActivities(candidateId: string) {
   const supabase = await createClient();

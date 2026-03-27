@@ -7,7 +7,7 @@ import { createClient } from "@/lib/supabase/server";
 import { getCurrentProfile, getCurrentUser } from "@/lib/auth";
 import { isCampaignStatus } from "@/features/campaigns/constants";
 
-import { parseCsvRow, parseCsv, normalizeOptionalString, getString, getStringList } from "./utils";
+import { parseCsvRow, parseCsv, normalizeOptionalString, getString, getStringList, extractLinkedInUrl } from "./utils";
 
 function ensureCompanyStatus(value: string): Database["public"]["Tables"]["companies"]["Row"]["status"] {
   const normalized = value.toLowerCase();
@@ -84,6 +84,7 @@ async function insertMissingCampaignCompanies(
   campaignId: string,
   companyIds: string[],
   campaignStatus: string | null,
+  interestLevel: string | null,
   notes: string | null
 ) {
   if (companyIds.length === 0) {
@@ -121,6 +122,7 @@ async function insertMissingCampaignCompanies(
       campaign_id: campaignId,
       company_id: companyId,
       campaign_status: campaignStatus,
+      interest_level: interestLevel,
       notes
     }));
 
@@ -211,6 +213,7 @@ export async function addCompaniesToCampaignAction(formData: FormData) {
     campaignId,
     companyIds,
     normalizeOptionalString(getString(formData, "campaign_status")) ?? "Added",
+    normalizeOptionalString(getString(formData, "interest_level")) ?? "ICE Cold",
     normalizeOptionalString(getString(formData, "notes"))
   );
 
@@ -232,6 +235,7 @@ export async function linkCompanyToCampaignAction(formData: FormData) {
     campaignId,
     [companyId],
     normalizeOptionalString(getString(formData, "campaign_status")) ?? "Added",
+    normalizeOptionalString(getString(formData, "interest_level")) ?? "ICE Cold",
     normalizeOptionalString(getString(formData, "notes"))
   );
 
@@ -366,6 +370,7 @@ export async function importLeadBatchAction(campaignId: string, rawRows: Record<
       campaign_id: campaignId,
       company_id: companyId,
       campaign_status: normalizeOptionalString((row.campaign_status ?? "").trim()) || "Added",
+      interest_level: normalizeOptionalString((row.interest_level ?? row.interest ?? row.temperature ?? "").trim()) || "ICE Cold",
       notes: normalizeOptionalString((row.campaign_notes ?? row.notes ?? "").trim())
     });
 
@@ -398,12 +403,14 @@ export async function importLeadBatchAction(campaignId: string, rawRows: Record<
     ).trim());
 
     if (contactFullName || contactEmail) {
+      const notesForUrl = normalizeOptionalString((row.campaign_notes ?? row.notes ?? "").trim());
       contactsToUpsert.push({
         company_id: companyId,
         full_name: contactFullName ?? "Primary Contact",
         role_title: contactRole,
         phone: contactPhone,
-        email: contactEmail
+        email: contactEmail,
+        linkedin_url: extractLinkedInUrl(notesForUrl)
       });
     }
 
@@ -577,6 +584,7 @@ export async function importCampaignLeadsAction(formData: FormData) {
         campaign_id: campaignId,
         company_id: companyId,
         campaign_status: normalizeOptionalString((row.campaign_status ?? "").trim()) || "Added",
+        interest_level: normalizeOptionalString((row.interest_level ?? row.interest ?? row.temperature ?? "").trim()) || "ICE Cold",
         notes: normalizeOptionalString((row.campaign_notes ?? row.notes ?? "").trim())
       });
 
@@ -586,12 +594,14 @@ export async function importCampaignLeadsAction(formData: FormData) {
       const contactPhone = normalizeOptionalString((row.contact_phone ?? row.phone ?? "").trim());
 
       if (contactFullName || contactEmail) {
+        const notesForUrl = normalizeOptionalString((row.campaign_notes ?? row.notes ?? "").trim());
         contactsToUpsert.push({
           company_id: companyId,
           full_name: contactFullName ?? "Primary Contact",
           role_title: contactRole,
           phone: contactPhone,
-          email: contactEmail
+          email: contactEmail,
+          linkedin_url: extractLinkedInUrl(notesForUrl)
         });
       }
 
@@ -636,15 +646,20 @@ export async function bulkUpdateLeadStatusAction(formData: FormData) {
   const campaignId = getString(formData, "campaign_id");
   const companyIds = getStringList(formData, "company_ids");
   const status = getString(formData, "status");
+  const interestLevel = getString(formData, "interest_level");
 
-  if (!campaignId || companyIds.length === 0 || !status) {
-    throw new Error("Campaign, companies, and status are required.");
+  if (!campaignId || companyIds.length === 0 || (!status && !interestLevel)) {
+    throw new Error("Campaign, companies, and either status or interest level are required.");
   }
 
   const supabase = await createClient();
+  const updatePayload: any = {};
+  if (status) updatePayload.campaign_status = status;
+  if (interestLevel) updatePayload.interest_level = interestLevel;
+
   const { error } = await (supabase
     .from("campaign_companies") as any)
-    .update({ campaign_status: status })
+    .update(updatePayload)
     .eq("campaign_id", campaignId)
     .in("company_id", companyIds);
 
@@ -726,6 +741,7 @@ export async function createCampaignLeadAction(formData: FormData) {
     campaignId,
     [companyId],
     normalizeOptionalString(getString(formData, "campaign_status")) || "Added",
+    normalizeOptionalString(getString(formData, "interest_level")) || "ICE Cold",
     normalizeOptionalString(getString(formData, "notes"))
   );
 
@@ -769,9 +785,10 @@ export async function updateLeadStatusAction(formData: FormData) {
   const campaignId = getString(formData, "campaign_id");
   const companyId = getString(formData, "company_id");
   const status = getString(formData, "status");
+  const interestLevel = getString(formData, "interest_level");
 
-  if (!campaignId || !companyId || !status) {
-    throw new Error("Campaign, company, and status are required.");
+  if (!campaignId || !companyId || (!status && !interestLevel)) {
+    throw new Error("Campaign, company, and either status or interest level are required.");
   }
 
   const profile = (await getCurrentProfile()) as { id: string; role: string | null } | null;
@@ -790,8 +807,12 @@ export async function updateLeadStatusAction(formData: FormData) {
     }
   }
 
+  const updatePayload: any = {};
+  if (status) updatePayload.campaign_status = status;
+  if (interestLevel) updatePayload.interest_level = interestLevel;
+
   const { error } = await (supabase.from("campaign_companies") as any)
-    .update({ campaign_status: status })
+    .update(updatePayload)
     .eq("campaign_id", campaignId)
     .eq("company_id", companyId);
 
