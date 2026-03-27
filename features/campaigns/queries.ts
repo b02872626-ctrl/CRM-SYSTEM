@@ -54,7 +54,7 @@ export async function getCampaignFilterOptions() {
     .limit(100);
 
   if (error) {
-    console.error("Failed to load campaign filter options:", error.message);
+    console.error("Failed to load campaign filter options:", error.message, (error as any).cause);
     return { owners: [] };
   }
 
@@ -66,7 +66,7 @@ export async function getCampaignFilterOptions() {
   };
 }
 
-export async function getCampaigns(filters: CampaignFilters = {}, page = 1) {
+export async function getCampaigns(filters: CampaignFilters = {}, page = 1, profile?: { id: string; role: string | null } | null) {
   const supabase = await createClient();
   const from = (page - 1) * CAMPAIGNS_PAGE_SIZE;
   const to = from + CAMPAIGNS_PAGE_SIZE - 1;
@@ -79,6 +79,11 @@ export async function getCampaigns(filters: CampaignFilters = {}, page = 1) {
       { count: "exact" }
     )
     .order("updated_at", { ascending: false });
+
+  // RBAC: If not admin, only show campaigns owned by the user
+  if (profile && profile.role !== "admin") {
+    campaignsQuery = campaignsQuery.eq("owner_id", profile.id);
+  }
 
   if (filters.status && filters.status !== "all") {
     campaignsQuery = campaignsQuery.eq("status", filters.status);
@@ -97,7 +102,7 @@ export async function getCampaigns(filters: CampaignFilters = {}, page = 1) {
   const campaignsResult = await campaignsQuery.range(from, to);
 
   if (campaignsResult.error) {
-    console.error("Failed to load campaigns:", campaignsResult.error.message);
+    console.error("Failed to load campaigns:", campaignsResult.error.message, (campaignsResult.error as any).cause);
     return { items: [], totalCount: 0, pageSize: CAMPAIGNS_PAGE_SIZE };
   }
 
@@ -180,20 +185,28 @@ export async function getCampaignById(id: string) {
   };
 }
 
-export async function getCampaignCompanies(campaignId: string, page = 1) {
+export async function getCampaignCompanies(campaignId: string, page = 1, searchQuery?: string) {
   const supabase = await createClient();
   const from = (page - 1) * CAMPAIGN_COMPANIES_PAGE_SIZE;
   const to = from + CAMPAIGN_COMPANIES_PAGE_SIZE - 1;
 
   // Use a JOIN to get everything in one go - more efficient and avoids mapping errors
-  const { data: links, error: linksError, count } = await supabase
+  let query = supabase
     .from("campaign_companies")
     .select(`
       *,
-      company:companies(*),
-      contacts:contacts(*)
+      company:companies!inner(
+        *,
+        contacts(id, full_name, role_title, email, phone)
+      )
     `, { count: "exact" })
-    .eq("campaign_id", campaignId)
+    .eq("campaign_id", campaignId);
+
+  if (searchQuery) {
+    query = query.or(`company_name.ilike.%${searchQuery.trim()}%`, { foreignTable: 'company' });
+  }
+
+  const { data: links, error: linksError, count } = await query
     .order("added_at", { ascending: false })
     .range(from, to);
 
@@ -206,7 +219,7 @@ export async function getCampaignCompanies(campaignId: string, page = 1) {
     return { items: [], totalCount: count ?? 0, pageSize: CAMPAIGN_COMPANIES_PAGE_SIZE };
   }
 
-  // Get deals count for these companies in one batch
+  // Get deals count... (rest should be same)
   const companyIds = (links as any[]).map(l => String(l.company_id)).filter(Boolean);
   const { data: deals } = await supabase
     .from("deals")
@@ -214,7 +227,7 @@ export async function getCampaignCompanies(campaignId: string, page = 1) {
     .in("company_id", companyIds);
 
   const dealsCountByCompany = new Map<string, number>();
-  for (const deal of (deals ?? []) as DealRow[]) {
+  for (const deal of (deals ?? []) as any[]) {
     const cid = String(deal.company_id ?? "");
     dealsCountByCompany.set(cid, (dealsCountByCompany.get(cid) ?? 0) + 1);
   }
@@ -223,12 +236,12 @@ export async function getCampaignCompanies(campaignId: string, page = 1) {
     const company = link.company;
     const companyId = String(link.company_id ?? "");
     
-    // Pick first contact as primary
-    const contactList = link.contacts as any[];
+    // Pick first contact from the nested company contacts as primary
+    const contactList = company?.contacts as any[];
     const primaryContact = contactList && contactList.length > 0 
       ? {
           full_name: String(contactList[0].full_name ?? "Primary Contact"),
-          job_title: getString(contactList[0].job_title),
+          role_title: getString(contactList[0].role_title),
           email: getString(contactList[0].email),
           phone: getString(contactList[0].phone)
         }
@@ -243,13 +256,22 @@ export async function getCampaignCompanies(campaignId: string, page = 1) {
       company: company
         ? {
             id: String(company.id ?? companyId),
-            name: String(company.company_name ?? company.domain ?? "Untitled company"),
+            name: String(company.company_name ?? (company as any).name ?? company.domain ?? "Untitled company"),
             industry: getString(company.industry),
             company_size: getString(company.company_size),
             location: getString(company.location),
             source: getString(company.source),
             priority: getString(company.priority),
-            status: String(company.status ?? "Unknown")
+            website: getString(company.website ?? company.domain),
+            notes: getString(company.notes),
+            hiring_signal: getString(company.hiring_signal),
+            contacts: contactList?.map(c => ({
+              id: String(c.id),
+              full_name: String(c.full_name),
+              role_title: getString(c.role_title),
+              email: getString(c.email),
+              phone: getString(c.phone)
+            })) ?? []
           }
         : null,
       primary_contact: primaryContact,
@@ -321,7 +343,7 @@ export async function getAvailableCompaniesForCampaign(campaignId: string) {
     .filter((company) => !linkedCompanyIds.has(String(company.id ?? "")))
     .map((company) => ({
       id: String(company.id ?? ""),
-      name: String(company.name ?? company.domain ?? "Untitled company"),
+      name: String((company as any).company_name ?? company.name ?? (company as any).domain ?? "Untitled company"),
       industry: getString(company.industry),
       country: getString(company.country)
     }));

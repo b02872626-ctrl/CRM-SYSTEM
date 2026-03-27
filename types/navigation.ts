@@ -3,4 +3,5 @@ export type NavigationItem = {
   href: string;
   title: string;
   description: string;
+  allowedRoles?: string[];
 };

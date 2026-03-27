@@ -1,8 +1,8 @@
 insert into public.profiles (id, full_name, email, role, job_title)
 values
   ('10000000-0000-0000-0000-000000000001', 'Amina Hassan', 'amina@afriworkbpo.com', 'admin', 'Operations Lead'),
-  ('10000000-0000-0000-0000-000000000002', 'David Mwangi', 'david@afriworkbpo.com', 'manager', 'Business Development Manager'),
-  ('10000000-0000-0000-0000-000000000003', 'Grace Njeri', 'grace@afriworkbpo.com', 'recruiter', 'Talent Partner');
+  ('10000000-0000-0000-0000-000000000002', 'David Mwangi', 'david@afriworkbpo.com', 'sales', 'Business Development Manager'),
+  ('10000000-0000-0000-0000-000000000003', 'Grace Njeri', 'grace@afriworkbpo.com', 'sales', 'Talent Partner');
 
 insert into public.companies (
   id,

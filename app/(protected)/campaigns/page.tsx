@@ -3,8 +3,10 @@ import Link from "next/link";
 import { PaginationControls } from "@/components/shared/pagination-controls";
 import { CampaignsFilters } from "@/features/campaigns/components/campaigns-filters";
 import { CampaignsTable } from "@/features/campaigns/components/campaigns-table";
+import { CampaignsHeader } from "@/features/campaigns/components/campaigns-header";
 import { getCampaignFilterOptions, getCampaigns } from "@/features/campaigns/queries";
 import { TableSkeleton } from "@/components/ui/table-skeleton";
+import { getCurrentProfile } from "@/lib/auth";
 
 type CampaignsPageProps = {
   searchParams: Promise<{
@@ -16,9 +18,11 @@ type CampaignsPageProps = {
 };
 
 async function CampaignsContent({
-  searchParams
+  searchParams,
+  profile
 }: {
   searchParams: { search?: string; status?: string; owner?: string; page?: string };
+  profile: { id: string; role: string | null } | null;
 }) {
   const page = Math.max(1, Number(searchParams.page ?? "1") || 1);
   const [campaignsResult, options] = await Promise.all([
@@ -28,7 +32,8 @@ async function CampaignsContent({
         status: searchParams.status,
         owner: searchParams.owner
       },
-      page
+      page,
+      profile
     ),
     getCampaignFilterOptions()
   ]);
@@ -61,25 +66,15 @@ async function CampaignsContent({
 
 export default async function CampaignsPage({ searchParams }: CampaignsPageProps) {
   const params = await searchParams;
+  const profile = await getCurrentProfile();
+  const { owners } = await getCampaignFilterOptions();
 
   return (
     <section className="crm-page">
-      <div className="crm-page-header">
-        <div>
-          <p className="crm-page-kicker">Campaigns</p>
-          <h2 className="crm-page-title">Campaigns</h2>
-          <p className="crm-page-copy">
-            Organize outbound focus areas before working companies, deals, and candidates.
-          </p>
-        </div>
-
-        <Link href="/campaigns/new" className="crm-primary-button">
-          Create campaign
-        </Link>
-      </div>
+      <CampaignsHeader owners={owners} profile={profile} />
 
       <Suspense fallback={<TableSkeleton rows={10} />}>
-        <CampaignsContent searchParams={params} />
+        <CampaignsContent searchParams={params} profile={profile} />
       </Suspense>
     </section>
   );

@@ -4,15 +4,24 @@ import { createClient } from "@/lib/supabase/server";
 
 const COMPANIES_PAGE_SIZE = 25;
 
-export async function getCompanies(page = 1) {
+export async function getCompanies(page = 1, profile?: { id: string; role: string | null } | null) {
   const supabase = await createClient();
   const from = (page - 1) * COMPANIES_PAGE_SIZE;
   const to = from + COMPANIES_PAGE_SIZE - 1;
-  const { data, error, count } = await supabase
-    .from("companies")
-    .select("*", {
-      count: "exact"
-    })
+  
+  let query = supabase.from("companies").select("*", { count: "exact" });
+
+  // RBAC: If not admin, only show companies owned by user or in their campaigns
+  if (profile && profile.role !== "admin") {
+    // This is a bit complex for a single query if we want to check both owner_id and campaign link
+    // For now, let's filter by owner_id or those linked to user's campaigns
+    // Note: Supabase .or() with nested filters can be tricky.
+    // A simpler approach for MVP: filter by owner_id. 
+    // If they need to see all campaign leads, we might need a join or a view.
+    query = query.eq("owner_id", profile.id);
+  }
+
+  const { data, error, count } = await query
     .order("updated_at", { ascending: false })
     .range(from, to);
 
@@ -135,18 +144,53 @@ export async function getCompanyActivities(companyId: string) {
         created_at,
         due_at,
         profile:profiles(id, full_name),
-        deal:deals(id, title)
+        deal:deals(id, title, role_title)
       `
     )
     .eq("company_id", companyId)
     .order("created_at", { ascending: false });
 
   if (error) {
+    if (error.message.includes("column deals_1.title does not exist")) {
+      // Fallback for missing title column
+      const { data: retryData, error: retryError } = await supabase
+        .from("activities")
+        .select(
+          `
+            id,
+            activity_type,
+            summary,
+            details,
+            created_at,
+            due_at,
+            profile:profiles(id, full_name),
+            deal:deals(id, role_title)
+          `
+        )
+        .eq("company_id", companyId)
+        .order("created_at", { ascending: false });
+      
+      if (!retryError && retryData) {
+        return (retryData as any[]).map(act => ({
+          ...act,
+          deal: act.deal ? {
+            id: act.deal.id,
+            title: act.deal.role_title ?? "Untitled deal"
+          } : null
+        }));
+      }
+    }
     console.error(`Failed to load company activities for ${companyId}:`, error.message);
     return [];
   }
 
-  return data ?? [];
+  return (data as any[]).map(act => ({
+    ...act,
+    deal: act.deal ? {
+      id: act.deal.id,
+      title: act.deal.title ?? act.deal.role_title ?? "Untitled deal"
+    } : null
+  }));
 }
 
 export async function getCompanyContacts(companyId: string) {
@@ -165,7 +209,7 @@ export async function getCompanyContacts(companyId: string) {
   return ((data ?? []) as Array<Record<string, unknown>>).map((contact) => ({
     id: String(contact.id ?? ""),
     full_name: String(contact.full_name ?? "Unknown"),
-    job_title: typeof contact.job_title === "string" ? contact.job_title : null,
+    role_title: typeof contact.role_title === "string" ? contact.role_title : null,
     email: typeof contact.email === "string" ? contact.email : null,
     phone: typeof contact.phone === "string" ? contact.phone : null,
     status: String(contact.status ?? "active")
@@ -235,11 +279,19 @@ export async function getCompanyCampaigns(companyId: string) {
   });
 }
 
-export async function getAvailableCampaignsForCompany(companyId: string) {
+export async function getAvailableCampaignsForCompany(companyId: string, profile?: { id: string; role: string | null } | null) {
   const supabase = await createClient();
+  
+  let campaignsQuery = supabase.from("campaigns").select("*").order("updated_at", { ascending: false });
+  
+  // RBAC: If not admin, only show campaigns owned by the user
+  if (profile && profile.role !== "admin") {
+    campaignsQuery = campaignsQuery.eq("owner_id", profile.id);
+  }
+
   const [{ data: campaigns, error: campaignsError }, { data: links, error: linksError }] =
     await Promise.all([
-      supabase.from("campaigns").select("*").order("updated_at", { ascending: false }),
+      campaignsQuery,
       supabase.from("campaign_companies").select("*").eq("company_id", companyId)
     ]);
 

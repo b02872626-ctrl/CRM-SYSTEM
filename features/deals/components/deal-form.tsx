@@ -43,12 +43,12 @@ export function DealForm({ mode, companies, recruiters, deal }: DealFormProps) {
   const action = mode === "create" ? createDealAction : updateDealAction;
 
   return (
-    <form action={action} className="space-y-5 rounded-lg border border-slate-200 bg-white p-4 shadow-sm">
+    <form action={action} className="crm-stat-card h-auto space-y-8">
       {deal ? <input type="hidden" name="id" value={deal.id} /> : null}
 
-      <div className="grid gap-3 md:grid-cols-2">
-        <div className="space-y-1">
-          <label htmlFor="company_id" className="text-sm font-medium text-slate-700">
+      <div className="grid gap-6 md:grid-cols-2">
+        <div className="crm-field">
+          <label htmlFor="company_id" className="crm-label">
             Company
           </label>
           <select
@@ -56,7 +56,7 @@ export function DealForm({ mode, companies, recruiters, deal }: DealFormProps) {
             name="company_id"
             defaultValue={deal?.company_id ?? ""}
             required
-            className="h-10 w-full rounded-md border border-slate-300 bg-white px-3 text-sm"
+            className="crm-select"
           >
             <option value="" disabled>
               Select a company
@@ -69,15 +69,15 @@ export function DealForm({ mode, companies, recruiters, deal }: DealFormProps) {
           </select>
         </div>
 
-        <div className="space-y-1">
-          <label htmlFor="assigned_profile_id" className="text-sm font-medium text-slate-700">
+        <div className="crm-field">
+          <label htmlFor="assigned_profile_id" className="crm-label">
             Assigned recruiter
           </label>
           <select
             id="assigned_profile_id"
             name="assigned_profile_id"
             defaultValue={deal?.assigned_profile_id ?? ""}
-            className="h-10 w-full rounded-md border border-slate-300 bg-white px-3 text-sm"
+            className="crm-select"
           >
             <option value="">Unassigned</option>
             {recruiters.map((recruiter) => (
@@ -88,8 +88,8 @@ export function DealForm({ mode, companies, recruiters, deal }: DealFormProps) {
           </select>
         </div>
 
-        <div className="space-y-1 md:col-span-2">
-          <label htmlFor="title" className="text-sm font-medium text-slate-700">
+        <div className="crm-field md:col-span-2">
+          <label htmlFor="title" className="crm-label">
             Role title
           </label>
           <input
@@ -98,13 +98,13 @@ export function DealForm({ mode, companies, recruiters, deal }: DealFormProps) {
             defaultValue={deal?.title ?? ""}
             autoFocus
             required
-            className="h-10 w-full rounded-md border border-slate-300 px-3 text-sm"
+            className="crm-input"
             placeholder="Customer Support Associate"
           />
         </div>
 
-        <div className="space-y-1">
-          <label htmlFor="number_of_hires" className="text-sm font-medium text-slate-700">
+        <div className="crm-field">
+          <label htmlFor="number_of_hires" className="crm-label">
             Number of hires
           </label>
           <input
@@ -114,19 +114,19 @@ export function DealForm({ mode, companies, recruiters, deal }: DealFormProps) {
             min="1"
             defaultValue={deal?.number_of_hires ?? 1}
             required
-            className="h-10 w-full rounded-md border border-slate-300 px-3 text-sm"
+            className="crm-input"
           />
         </div>
 
-        <div className="space-y-1">
-          <label htmlFor="seniority" className="text-sm font-medium text-slate-700">
+        <div className="crm-field">
+          <label htmlFor="seniority" className="crm-label">
             Seniority
           </label>
           <select
             id="seniority"
             name="seniority"
             defaultValue={deal?.seniority ?? "mid"}
-            className="h-10 w-full rounded-md border border-slate-300 bg-white px-3 text-sm"
+            className="crm-select"
           >
             {dealSeniorityOptions.map((seniority) => (
               <option key={seniority} value={seniority}>
@@ -136,15 +136,15 @@ export function DealForm({ mode, companies, recruiters, deal }: DealFormProps) {
           </select>
         </div>
 
-        <div className="space-y-1">
-          <label htmlFor="urgency" className="text-sm font-medium text-slate-700">
+        <div className="crm-field">
+          <label htmlFor="urgency" className="crm-label">
             Urgency
           </label>
           <select
             id="urgency"
             name="urgency"
             defaultValue={deal?.urgency ?? "medium"}
-            className="h-10 w-full rounded-md border border-slate-300 bg-white px-3 text-sm"
+            className="crm-select"
           >
             {dealUrgencyOptions.map((urgency) => (
               <option key={urgency} value={urgency}>
@@ -154,15 +154,15 @@ export function DealForm({ mode, companies, recruiters, deal }: DealFormProps) {
           </select>
         </div>
 
-        <div className="space-y-1">
-          <label htmlFor="stage" className="text-sm font-medium text-slate-700">
+        <div className="crm-field">
+          <label htmlFor="stage" className="crm-label">
             Status
           </label>
           <select
             id="stage"
             name="stage"
             defaultValue={deal?.stage ?? "new"}
-            className="h-10 w-full rounded-md border border-slate-300 bg-white px-3 text-sm"
+            className="crm-select"
           >
             {dealStageOptions.map((stage) => (
               <option key={stage} value={stage}>
@@ -172,8 +172,8 @@ export function DealForm({ mode, companies, recruiters, deal }: DealFormProps) {
           </select>
         </div>
 
-        <div className="space-y-1">
-          <label htmlFor="value" className="text-sm font-medium text-slate-700">
+        <div className="crm-field">
+          <label htmlFor="value" className="crm-label">
             Expected revenue
           </label>
           <input
@@ -183,13 +183,13 @@ export function DealForm({ mode, companies, recruiters, deal }: DealFormProps) {
             min="0"
             step="0.01"
             defaultValue={deal?.value ?? ""}
-            className="h-10 w-full rounded-md border border-slate-300 px-3 text-sm"
+            className="crm-input"
             placeholder="18000"
           />
         </div>
 
-        <div className="space-y-1">
-          <label htmlFor="currency" className="text-sm font-medium text-slate-700">
+        <div className="crm-field">
+          <label htmlFor="currency" className="crm-label">
             Currency
           </label>
           <input
@@ -197,12 +197,12 @@ export function DealForm({ mode, companies, recruiters, deal }: DealFormProps) {
             name="currency"
             maxLength={3}
             defaultValue={deal?.currency ?? "USD"}
-            className="h-10 w-full rounded-md border border-slate-300 px-3 text-sm uppercase"
+            className="crm-input uppercase"
           />
         </div>
 
-        <div className="space-y-1">
-          <label htmlFor="expected_close_date" className="text-sm font-medium text-slate-700">
+        <div className="crm-field">
+          <label htmlFor="expected_close_date" className="crm-label">
             Expected close date
           </label>
           <input
@@ -210,12 +210,12 @@ export function DealForm({ mode, companies, recruiters, deal }: DealFormProps) {
             name="expected_close_date"
             type="date"
             defaultValue={deal?.expected_close_date ?? ""}
-            className="h-10 w-full rounded-md border border-slate-300 px-3 text-sm"
+            className="crm-input"
           />
         </div>
 
-        <div className="space-y-1 md:col-span-2">
-          <label htmlFor="notes" className="text-sm font-medium text-slate-700">
+        <div className="crm-field md:col-span-2">
+          <label htmlFor="notes" className="crm-label">
             Notes
           </label>
           <textarea
@@ -223,22 +223,22 @@ export function DealForm({ mode, companies, recruiters, deal }: DealFormProps) {
             name="notes"
             rows={4}
             defaultValue={deal?.notes ?? ""}
-            className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm"
+            className="crm-input h-auto py-2"
             placeholder="Add hiring scope or commercial notes"
           />
         </div>
       </div>
 
-      <div className="flex items-center gap-2">
+      <div className="flex items-center gap-3 pt-4">
         <button
           type="submit"
-          className="inline-flex h-10 items-center rounded-md bg-slate-900 px-4 text-sm font-medium text-white"
+          className="crm-primary-button px-8"
         >
           {mode === "create" ? "Create deal" : "Save changes"}
         </button>
         <Link
           href={deal ? `/deals/${deal.id}` : "/deals"}
-          className="inline-flex h-10 items-center rounded-md border border-slate-300 bg-white px-4 text-sm font-medium text-slate-700"
+          className="crm-secondary-button"
         >
           Cancel
         </Link>

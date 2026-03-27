@@ -1,6 +1,7 @@
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import { AppShell } from "@/components/layout/app-shell";
+import { getCurrentProfile } from "@/lib/auth";
 
 function hasAuthCookies(cookieEntries: Array<{ name: string }>) {
   return cookieEntries.some(
@@ -19,5 +20,15 @@ export default async function ProtectedLayout({
     redirect("/login");
   }
 
-  return <AppShell>{children}</AppShell>;
+  const profile = (await getCurrentProfile()) as { email: string; role: string | null; full_name: string | null } | null;
+
+  return (
+    <AppShell 
+      userEmail={profile?.email} 
+      userRole={profile?.role}
+      userName={profile?.full_name}
+    >
+      {children}
+    </AppShell>
+  );
 }

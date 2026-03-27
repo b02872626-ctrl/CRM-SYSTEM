@@ -4,7 +4,7 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import type { CampaignStatus, Database } from "@/types/database";
 import { createClient } from "@/lib/supabase/server";
-import { getCurrentProfile } from "@/lib/auth";
+import { getCurrentProfile, getCurrentUser } from "@/lib/auth";
 import { isCampaignStatus } from "@/features/campaigns/constants";
 
 import { parseCsvRow, parseCsv, normalizeOptionalString, getString, getStringList } from "./utils";
@@ -136,6 +136,11 @@ async function insertMissingCampaignCompanies(
 }
 
 export async function createCampaignAction(formData: FormData) {
+  const profile = (await getCurrentProfile()) as { id: string; role: string | null } | null;
+  if (profile?.role !== "admin") {
+    throw new Error("Unauthorized: Only admins can create campaigns.");
+  }
+
   const supabase = await createClient();
   const payload = getCampaignPayload(formData);
   const campaignsTable = supabase.from("campaigns") as unknown as {
@@ -157,11 +162,23 @@ export async function createCampaignAction(formData: FormData) {
 }
 
 export async function updateCampaignAction(formData: FormData) {
-  const supabase = await createClient();
+  const profile = (await getCurrentProfile()) as { id: string; role: string | null } | null;
   const id = getString(formData, "id");
+  if (!id) throw new Error("Campaign id is required.");
 
-  if (!id) {
-    throw new Error("Campaign id is required.");
+  const supabase = await createClient();
+  
+  // Check permission: Admin or Owner
+  if (profile?.role !== "admin") {
+    const { data: campaign } = await (supabase
+      .from("campaigns")
+      .select("owner_id")
+      .eq("id", id)
+      .maybeSingle() as any);
+      
+    if (campaign?.owner_id !== profile?.id) {
+      throw new Error("Unauthorized: Only the campaign owner or an admin can update this campaign.");
+    }
   }
 
   const payload = getCampaignPayload(formData);
@@ -225,81 +242,204 @@ export async function linkCompanyToCampaignAction(formData: FormData) {
   redirect(`/companies/${companyId}`);
 }
 
-export async function importLeadBatchAction(campaignId: string, rows: Record<string, string>[]) {
-  if (!campaignId || rows.length === 0) return { success: true };
+export async function importLeadBatchAction(campaignId: string, rawRows: Record<string, string>[]) {
+  if (!campaignId || rawRows.length === 0) return { success: true };
+
+  // Normalize row keys to lowercase for robust mapping
+  const rows = rawRows.map(row => {
+    const normalized: Record<string, string> = {};
+    for (const [key, value] of Object.entries(row)) {
+      normalized[key.toLowerCase().replace(/[\s_]+/g, "_")] = value;
+    }
+    return normalized;
+  });
 
   const supabase = await createClient();
-  const profile = await getCurrentProfile();
+  const profile = (await getCurrentProfile()) as { id?: string } | null;
 
-  const companiesTable = supabase.from("companies") as any;
-  const contactsTable = supabase.from("contacts") as any;
-  const campaignCompaniesTable = supabase.from("campaign_companies") as any;
+  // Use the same bulk-optimized logic as the specialized action for consistency and speed
+  // 1. Batch Lookups
+  const companyNames = rows.map(r => (r.company_name ?? r.company ?? "").trim()).filter(Boolean);
+  const ownerEmails = rows.map(r => (r.owner_email ?? "").trim().toLowerCase()).filter(Boolean);
 
+  // Bulk Lookup: Use "or" with "ilike" for case-insensitive batch lookup of companies
+  const companyFilters = companyNames.map(name => `company_name.ilike.${name.replace(/,/g, "")}`).join(",");
+  
+  const [
+    { data: existingProfiles },
+    { data: existingCompanies }
+  ] = await Promise.all([
+    supabase.from("profiles").select("id, email").in("email", ownerEmails),
+    companyFilters ? supabase.from("companies").select("*").or(companyFilters) : Promise.resolve({ data: [] })
+  ]) as any;
+
+  const profilesByEmail = new Map<string, any>((existingProfiles ?? []).map((p: any) => [p.email.toLowerCase(), p.id]));
+  const companiesByName = new Map<string, any>((existingCompanies ?? []).map((c: any) => [c.company_name.toLowerCase(), c]));
+
+  const companiesToInsert: any[] = [];
+  const companiesToUpdate: any[] = [];
+  const rowsWithCompany: { row: Record<string, string>, companyId?: string, isNew: boolean }[] = [];
+
+  // 2. Prepare Companies
   for (const row of rows) {
     const companyName = normalizeOptionalString((row.company_name ?? row.company ?? "").trim());
     if (!companyName) continue;
 
-    const ownerId = await getOwnerIdFromRow(supabase, row);
+    const ownerEmail = (row.owner_email ?? "").trim().toLowerCase();
+    const ownerId = row.owner_id || profilesByEmail.get(ownerEmail) || null;
     
-    // Find or create company
-    const { data: existingCompany } = await companiesTable
-      .select("id")
-      .ilike("company_name", companyName)
-      .maybeSingle();
-
-    let companyId = existingCompany?.id;
-
-    if (!companyId) {
-      const { data: createdCompany } = await companiesTable
-        .insert({
-          company_name: companyName,
-          industry: normalizeOptionalString((row.industry ?? row.company_industry ?? "").trim()),
-          company_size: normalizeOptionalString((row.company_size ?? row.size ?? row.employees ?? "").trim()),
-          location: normalizeOptionalString((row.location ?? row.company_location ?? row.city ?? row.address ?? "").trim()),
-          status: ensureCompanyStatus((row.status ?? row.company_status ?? "").trim()),
-          owner_id: ownerId,
-          notes: normalizeOptionalString((row.notes ?? row.description ?? row.about ?? "").trim())
-        })
-        .select("id")
-        .single();
-      companyId = createdCompany?.id;
-    } else {
-      // Heal existing company
-      const updatePayload = {
+    const existing = companiesByName.get(companyName.toLowerCase()) as any;
+    
+    if (!existing) {
+      companiesToInsert.push({
+        company_name: companyName,
         industry: normalizeOptionalString((row.industry ?? row.company_industry ?? "").trim()),
         company_size: normalizeOptionalString((row.company_size ?? row.size ?? row.employees ?? "").trim()),
         location: normalizeOptionalString((row.location ?? row.company_location ?? row.city ?? row.address ?? "").trim()),
+        status: ensureCompanyStatus((row.status ?? row.company_status ?? "").trim()),
+        owner_id: ownerId,
         notes: normalizeOptionalString((row.notes ?? row.description ?? row.about ?? "").trim())
-      };
+      });
+      rowsWithCompany.push({ row, isNew: true });
+    } else {
+      const companyId = existing.id;
+      // Healing logic: Only update if fields are null/missing
+      const updatePayload: any = {};
+      if (!existing.industry) updatePayload.industry = normalizeOptionalString((row.industry ?? row.company_industry ?? "").trim());
+      if (!existing.company_size) updatePayload.company_size = normalizeOptionalString((row.company_size ?? row.size ?? row.employees ?? "").trim());
+      if (!existing.location) updatePayload.location = normalizeOptionalString((row.location ?? row.company_location ?? row.city ?? row.address ?? "").trim());
+      if (!existing.notes) updatePayload.notes = normalizeOptionalString((row.notes ?? row.description ?? row.about ?? "").trim());
+
       const cleanUpdate = Object.fromEntries(Object.entries(updatePayload).filter(([_, v]) => v !== null));
       if (Object.keys(cleanUpdate).length > 0) {
-        await companiesTable.update(cleanUpdate).eq("id", companyId);
+        companiesToUpdate.push({ id: companyId, ...cleanUpdate });
       }
+      rowsWithCompany.push({ row, companyId, isNew: false });
+    }
+  }
+
+  // 3. Bulk Insert Companies
+  if (companiesToInsert.length > 0) {
+    const { data: createdCompanies, error: insertError } = await (supabase
+      .from("companies") as any)
+      .insert(companiesToInsert)
+      .select("id, company_name");
+    
+    if (insertError) {
+      console.error("[Import] Companies insert error:", insertError.message, insertError.details);
     }
 
+    if (createdCompanies) {
+      const createdByName = new Map((createdCompanies as any[]).map(c => [c.company_name.toLowerCase(), c.id]));
+      // Map created IDs back to rows
+      rowsWithCompany.forEach(item => {
+        if (item.isNew) {
+          const name = (item.row.company_name ?? item.row.company ?? "").trim().toLowerCase();
+          item.companyId = createdByName.get(name);
+        }
+      });
+    }
+  }
+
+  // 4. Individual Updates for Healing
+  if (companiesToUpdate.length > 0) {
+    const results = await Promise.allSettled(companiesToUpdate.map(upd => 
+      (supabase.from("companies") as any).update(upd).eq("id", upd.id)
+    ));
+    
+    results.forEach((res, idx) => {
+      if (res.status === 'rejected') {
+        console.error(`[Import] Company update failed for ${companiesToUpdate[idx].id}:`, res.reason);
+      }
+    });
+  }
+
+  // 5. Bulk Links, Contacts, Activities
+  const linksToUpsert: any[] = [];
+  const contactsToUpsert: any[] = [];
+  const activitiesToInsert: any[] = [];
+
+  for (const { row, companyId } of rowsWithCompany) {
     if (!companyId) continue;
 
-    // Link to campaign
-    await campaignCompaniesTable.upsert({
+    linksToUpsert.push({
       campaign_id: campaignId,
       company_id: companyId,
-      campaign_status: normalizeOptionalString((row.campaign_status ?? "").trim()),
-      notes: normalizeOptionalString((row.campaign_notes ?? "").trim())
-    }, { onConflict: "campaign_id,company_id" });
+      campaign_status: normalizeOptionalString((row.campaign_status ?? "").trim()) || "Added",
+      notes: normalizeOptionalString((row.campaign_notes ?? row.notes ?? "").trim())
+    });
 
-    // Add contact
-    const contactFullName = normalizeOptionalString((row.contact_full_name ?? row.name ?? row.contact_name ?? row.contact ?? "").trim());
-    const contactEmail = normalizeOptionalString((row.contact_email ?? row.email ?? "").trim());
-    
+    const rowKeys = Object.keys(row);
+    const findKey = (search: string[]) => rowKeys.find(k => search.every(s => k.includes(s)));
+
+    const contactFullName = normalizeOptionalString((
+      row.contact_full_name ?? row.contact_name ?? row.contact ?? row.name ?? 
+      row.person ?? row.full_name ?? row.primary_contact ?? 
+      row[findKey(["contact", "name"]) || findKey(["contact", "full"]) || findKey(["name"]) || ""] ??
+      ""
+    ).trim());
+
+    const contactEmail = normalizeOptionalString((
+      row.contact_email ?? row.email ?? row.mail ?? 
+      row[findKey(["contact", "email"]) || findKey(["email"]) || findKey(["mail"]) || ""] ??
+      ""
+    ).trim());
+
+    const contactRole = normalizeOptionalString((
+      row.contact_job_title ?? row.contact_role_title ?? row.title ?? row.job_title ?? row.role ??
+      row[findKey(["contact", "role"]) || findKey(["job", "title"]) || findKey(["title"]) || ""] ??
+      ""
+    ).trim());
+
+    const contactPhone = normalizeOptionalString((
+      row.contact_phone ?? row.phone ?? row.mobile ?? row.tel ??
+      row[findKey(["contact", "phone"]) || findKey(["phone"]) || findKey(["mobile"]) || ""] ??
+      ""
+    ).trim());
+
     if (contactFullName || contactEmail) {
-      await contactsTable.upsert({
+      contactsToUpsert.push({
         company_id: companyId,
         full_name: contactFullName ?? "Primary Contact",
-        job_title: normalizeOptionalString((row.contact_job_title ?? row.contact_role_title ?? row.title ?? row.job_title ?? "").trim()),
-        phone: normalizeOptionalString((row.contact_phone ?? row.phone ?? "").trim()),
+        role_title: contactRole,
+        phone: contactPhone,
         email: contactEmail
-      }, { onConflict: "company_id,email" });
+      });
     }
+
+    const nextStep = normalizeOptionalString((row.next_step ?? "").trim());
+    if (nextStep) {
+      activitiesToInsert.push({
+        company_id: companyId,
+        profile_id: profile?.id ?? null,
+        activity_type: "task",
+        summary: nextStep,
+        due_at: normalizeOptionalString((row.next_step_date ?? "").trim())
+      });
+    }
+  }
+
+  if (linksToUpsert.length > 0) {
+    const { error: linkError } = await (supabase.from("campaign_companies") as any).upsert(linksToUpsert, { onConflict: "campaign_id,company_id" });
+    if (linkError) console.error("[Import] Links error:", linkError.message, linkError.details);
+  }
+    
+  if (contactsToUpsert.length > 0) {
+    // Use plain insert with ignoreDuplicates instead of upsert.
+    // The onConflict("company_id,email") approach fails silently when email is NULL
+    // because PostgreSQL unique constraints don't match NULL values.
+    const { error: contactError } = await (supabase.from("contacts") as any).insert(contactsToUpsert, { ignoreDuplicates: true });
+    if (contactError) {
+      console.error("[Import] Contacts error:", contactError.message, contactError.details);
+      console.log("[Import] Failed contact payload sample:", contactsToUpsert[0]);
+    } else {
+      console.log(`[Import] Successfully inserted ${contactsToUpsert.length} contacts`);
+    }
+  }
+  
+  if (activitiesToInsert.length > 0) {
+    const { error: activityError } = await (supabase.from("activities") as any).insert(activitiesToInsert);
+    if (activityError) console.error("[Import] Activities error:", activityError.message);
   }
 
   revalidatePath(`/campaigns/${campaignId}`);
@@ -328,56 +468,53 @@ export async function importCampaignLeadsAction(formData: FormData) {
 
   const supabase = await createClient();
   const profile = (await getCurrentProfile()) as { id?: string } | null;
-  const companiesTable = supabase.from("companies") as unknown as {
-    select: (columns: string) => {
-      ilike: (column: string, value: string) => {
-        maybeSingle: () => Promise<{ data: { id: string } | null; error: { message: string } | null }>;
-      };
-    };
-    insert: (values: Database["public"]["Tables"]["companies"]["Insert"]) => {
-      select: (columns: string) => {
-        single: () => Promise<{ data: { id: string }; error: { message: string } | null }>;
-      };
-    };
-  };
-  const contactsTable = supabase.from("contacts") as unknown as {
-    insert: (
-      values: Database["public"]["Tables"]["contacts"]["Insert"]
-    ) => Promise<{ error: { message: string } | null }>;
-  };
-  const activitiesTable = supabase.from("activities") as unknown as {
-    insert: (
-      values: Database["public"]["Tables"]["activities"]["Insert"]
-    ) => Promise<{ error: { message: string } | null }>;
-  };
+  const companiesTable = supabase.from("companies") as any;
+  const contactsTable = supabase.from("contacts") as any;
+  const activitiesTable = supabase.from("activities") as any;
+  const campaignCompaniesTable = supabase.from("campaign_companies") as any;
 
-  const BATCH_SIZE = 10;
+  const BATCH_SIZE = 50;
+  const CONCURRENCY = 5;
+  
+  // Create all batches first
+  const batches: any[][] = [];
   for (let i = 0; i < rows.length; i += BATCH_SIZE) {
-    const batch = rows.slice(i, i + BATCH_SIZE);
-    
-    await Promise.all(batch.map(async (row) => {
+    batches.push(rows.slice(i, i + BATCH_SIZE));
+  }
+
+  // Helper to process a single batch (extracted from the loop)
+  const processBatch = async (batch: any[]) => {
+    // 1. Batch Lookups
+    const companyNames = batch.map(r => (r.company_name ?? r.company ?? "").trim()).filter(Boolean);
+    const ownerEmails = batch.map(r => (r.owner_email ?? "").trim().toLowerCase()).filter(Boolean);
+
+    const [
+      { data: existingProfiles },
+      { data: existingCompanies }
+    ] = await Promise.all([
+      supabase.from("profiles").select("id, email").in("email", ownerEmails),
+      supabase.from("companies").select("*").in("company_name", companyNames)
+    ]) as any;
+
+    const profilesByEmail = new Map<string, any>((existingProfiles ?? []).map((p: any) => [p.email.toLowerCase(), p.id]));
+    const companiesByName = new Map<string, any>((existingCompanies ?? []).map((c: any) => [c.company_name.toLowerCase(), c]));
+
+    const companiesToInsert: any[] = [];
+    const companiesToUpdate: any[] = [];
+    const rowsWithCompany: { row: Record<string, string>, companyId?: string, isNew: boolean }[] = [];
+
+    // 2. Prepare Companies
+    for (const row of batch) {
       const companyName = normalizeOptionalString((row.company_name ?? row.company ?? "").trim());
-      console.log(`[Import] Processing row for company: "${companyName}"`);
+      if (!companyName) continue;
 
-      if (!companyName) {
-        console.warn("[Import] Missing company name, skipping row:", row);
-        return;
-      }
-
-      const ownerId = await getOwnerIdFromRow(supabase, row);
-      const { data: existingCompany, error: existingCompanyError } = await companiesTable
-        .select("id")
-        .ilike("company_name", companyName)
-        .maybeSingle();
-
-      if (existingCompanyError) {
-        throw new Error(existingCompanyError.message);
-      }
-
-      let companyId = existingCompany?.id ?? null;
-
-      if (!companyId) {
-        const companyPayload: Database["public"]["Tables"]["companies"]["Insert"] = {
+      const ownerEmail = (row.owner_email ?? "").trim().toLowerCase();
+      const ownerId = row.owner_id || profilesByEmail.get(ownerEmail) || null;
+      
+      const existing = companiesByName.get(companyName.toLowerCase()) as any;
+      
+      if (!existing) {
+        companiesToInsert.push({
           company_name: companyName,
           industry: normalizeOptionalString((row.industry ?? row.company_industry ?? "").trim()),
           company_size: normalizeOptionalString((row.company_size ?? row.size ?? row.employees ?? "").trim()),
@@ -385,86 +522,108 @@ export async function importCampaignLeadsAction(formData: FormData) {
           status: ensureCompanyStatus((row.status ?? row.company_status ?? "").trim()),
           owner_id: ownerId,
           notes: normalizeOptionalString((row.notes ?? row.description ?? row.about ?? "").trim())
-        };
-
-        const { data: createdCompany, error: companyError } = await companiesTable
-          .insert(companyPayload)
-          .select("id")
-          .single();
-
-        if (companyError) {
-          throw new Error(companyError.message);
-        }
-
-        if (createdCompany) {
-          companyId = createdCompany.id;
-          console.log(`[Import] Created new company with ID: ${companyId}`);
-        }
+        });
+        rowsWithCompany.push({ row, isNew: true });
       } else {
-        console.log(`[Import] Found existing company with ID: ${companyId}`);
-        // Heal existing company data if missing
-        const updatePayload = {
-          industry: normalizeOptionalString((row.industry ?? row.company_industry ?? "").trim()),
-          company_size: normalizeOptionalString((row.company_size ?? row.size ?? row.employees ?? "").trim()),
-          location: normalizeOptionalString((row.location ?? row.company_location ?? row.city ?? row.address ?? "").trim()),
-          notes: normalizeOptionalString((row.notes ?? row.description ?? row.about ?? "").trim())
-        };
+        const companyId = existing.id;
+        const updatePayload: any = {};
+        if (!existing.industry) updatePayload.industry = normalizeOptionalString((row.industry ?? row.company_industry ?? "").trim());
+        if (!existing.company_size) updatePayload.company_size = normalizeOptionalString((row.company_size ?? row.size ?? row.employees ?? "").trim());
+        if (!existing.location) updatePayload.location = normalizeOptionalString((row.location ?? row.company_location ?? row.city ?? row.address ?? "").trim());
+        if (!existing.notes) updatePayload.notes = normalizeOptionalString((row.notes ?? row.description ?? row.about ?? "").trim());
 
-        // Only update if we have new data in these fields
-        const cleanUpdate = Object.fromEntries(
-          Object.entries(updatePayload).filter(([_, v]) => v !== null)
-        );
-
+        const cleanUpdate = Object.fromEntries(Object.entries(updatePayload).filter(([_, v]) => v !== null));
         if (Object.keys(cleanUpdate).length > 0) {
-          await (supabase.from("companies") as any).update(cleanUpdate).eq("id", companyId);
+          companiesToUpdate.push({ id: companyId, ...cleanUpdate });
         }
+        rowsWithCompany.push({ row, companyId, isNew: false });
       }
-      
-      if (!companyId) return;
+    }
 
-      await insertMissingCampaignCompanies(
-        campaignId,
-        [companyId],
-        normalizeOptionalString((row.campaign_status ?? "").trim()) ?? "Added",
-        normalizeOptionalString((row.campaign_notes ?? row.notes ?? "").trim())
-      );
+    // 3. Bulk Insert Companies
+    if (companiesToInsert.length > 0) {
+      const { data: createdCompanies } = await (supabase
+        .from("companies") as any)
+        .insert(companiesToInsert)
+        .select("id, company_name");
+      
+      if (createdCompanies) {
+        const createdByName = new Map((createdCompanies as any[]).map(c => [c.company_name.toLowerCase(), c.id]));
+        rowsWithCompany.forEach(item => {
+          if (item.isNew) {
+            const name = (item.row.company_name ?? item.row.company ?? "").trim().toLowerCase();
+            item.companyId = createdByName.get(name);
+          }
+        });
+      }
+    }
+
+    // 4. Individual Updates for Healing
+    if (companiesToUpdate.length > 0) {
+      await Promise.all(companiesToUpdate.map(upd => 
+        (supabase.from("companies") as any).update(upd).eq("id", upd.id)
+      ));
+    }
+
+    // 5. Bulk Links, Contacts, Activities
+    const linksToUpsert: any[] = [];
+    const contactsToUpsert: any[] = [];
+    const activitiesToInsert: any[] = [];
+
+    for (const { row, companyId } of rowsWithCompany) {
+      if (!companyId) continue;
+
+      linksToUpsert.push({
+        campaign_id: campaignId,
+        company_id: companyId,
+        campaign_status: normalizeOptionalString((row.campaign_status ?? "").trim()) || "Added",
+        notes: normalizeOptionalString((row.campaign_notes ?? row.notes ?? "").trim())
+      });
 
       const contactFullName = normalizeOptionalString((row.contact_full_name ?? row.name ?? row.contact_name ?? row.contact ?? "").trim());
-      const contactRoleTitle = normalizeOptionalString((row.contact_job_title ?? row.contact_role_title ?? row.contact_person_title ?? row.title ?? row.job_title ?? "").trim());
-      const contactPhone = normalizeOptionalString((row.contact_phone ?? row.phone ?? "").trim());
       const contactEmail = normalizeOptionalString((row.contact_email ?? row.email ?? "").trim());
+      const contactRole = normalizeOptionalString((row.contact_job_title ?? row.contact_role_title ?? row.title ?? row.job_title ?? "").trim());
+      const contactPhone = normalizeOptionalString((row.contact_phone ?? row.phone ?? "").trim());
 
-      if (contactFullName || contactRoleTitle || contactPhone || contactEmail) {
-        const { error: contactError } = await contactsTable.insert({
+      if (contactFullName || contactEmail) {
+        contactsToUpsert.push({
           company_id: companyId,
           full_name: contactFullName ?? "Primary Contact",
-          job_title: contactRoleTitle,
+          role_title: contactRole,
           phone: contactPhone,
           email: contactEmail
         });
-
-        if (contactError) {
-          console.error("[Import] Contact insert error:", contactError.message);
-        }
       }
 
       const nextStep = normalizeOptionalString((row.next_step ?? "").trim());
-      const nextStepDate = normalizeOptionalString((row.next_step_date ?? "").trim());
-
       if (nextStep) {
-        const { error: activityError } = await activitiesTable.insert({
+        activitiesToInsert.push({
           company_id: companyId,
           profile_id: profile?.id ?? null,
           activity_type: "task",
           summary: nextStep,
-          due_at: nextStepDate
+          due_at: normalizeOptionalString((row.next_step_date ?? "").trim())
         });
-
-        if (activityError) {
-          console.error("[Import] Activity insert error:", activityError.message);
-        }
       }
-    }));
+    }
+
+    await linksToUpsert.length > 0 ? (supabase.from("campaign_companies") as any).upsert(linksToUpsert, { onConflict: "campaign_id,company_id" }) : Promise.resolve();
+
+    if (contactsToUpsert.length > 0) {
+      const { error: contactError } = await (supabase.from("contacts") as any).upsert(contactsToUpsert, { onConflict: "company_id,email" });
+      if (contactError) console.error("[Import] Contacts error (batch):", contactError.message, contactError.details);
+    }
+
+    if (activitiesToInsert.length > 0) {
+      const { error: activityError } = await (supabase.from("activities") as any).insert(activitiesToInsert);
+      if (activityError) console.error("[Import] Activities error (batch):", activityError.message);
+    }
+  };
+
+  // Process batches with concurrency
+  for (let i = 0; i < batches.length; i += CONCURRENCY) {
+    const chunk = batches.slice(i, i + CONCURRENCY);
+    await Promise.all(chunk.map(batch => processBatch(batch)));
   }
 
   revalidatePath("/campaigns");
@@ -579,7 +738,7 @@ export async function createCampaignLeadAction(formData: FormData) {
       company_id: companyId,
       full_name: contactName || "Primary Contact",
       email: normalizeOptionalString(contactEmail),
-      job_title: normalizeOptionalString(getString(formData, "contact_job_title")),
+      role_title: normalizeOptionalString(getString(formData, "contact_job_title")),
       phone: normalizeOptionalString(getString(formData, "contact_phone"))
     });
   }
@@ -588,4 +747,57 @@ export async function createCampaignLeadAction(formData: FormData) {
   revalidatePath(`/campaigns/${campaignId}`);
   revalidatePath("/companies");
   redirect(`/campaigns/${campaignId}`);
+}
+
+export async function deleteCampaignAction(formData: FormData) {
+  const campaignId = getString(formData, "id");
+  if (!campaignId) throw new Error("Campaign ID is required.");
+
+  const supabase = await createClient();
+  const { error } = await (supabase.from("campaigns") as any).delete().eq("id", campaignId);
+
+  if (error) {
+    throw new Error(error.message);
+  }
+
+  revalidatePath("/campaigns");
+  redirect("/campaigns");
+}
+
+
+export async function updateLeadStatusAction(formData: FormData) {
+  const campaignId = getString(formData, "campaign_id");
+  const companyId = getString(formData, "company_id");
+  const status = getString(formData, "status");
+
+  if (!campaignId || !companyId || !status) {
+    throw new Error("Campaign, company, and status are required.");
+  }
+
+  const profile = (await getCurrentProfile()) as { id: string; role: string | null } | null;
+  const supabase = await createClient();
+
+  // Check permission: Admin or Owner
+  if (profile?.role !== "admin") {
+    const { data: campaign } = await (supabase
+      .from("campaigns")
+      .select("owner_id")
+      .eq("id", campaignId)
+      .maybeSingle() as any);
+      
+    if (campaign?.owner_id !== profile?.id) {
+      throw new Error("Unauthorized: Only the campaign owner or an admin can update leads in this campaign.");
+    }
+  }
+
+  const { error } = await (supabase.from("campaign_companies") as any)
+    .update({ campaign_status: status })
+    .eq("campaign_id", campaignId)
+    .eq("company_id", companyId);
+
+  if (error) {
+    throw new Error(error.message);
+  }
+
+  revalidatePath(`/campaigns/${campaignId}`);
 }

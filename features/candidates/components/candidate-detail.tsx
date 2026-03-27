@@ -67,22 +67,22 @@ export function CandidateDetail({ candidate }: CandidateDetailProps) {
 
   return (
     <section className="space-y-6">
-      <div className="flex flex-col gap-4 rounded-lg border border-slate-200 bg-white p-6 shadow-sm lg:flex-row lg:items-start lg:justify-between">
+      <div className="flex flex-col gap-6 crm-stat-card h-auto lg:flex-row lg:items-center lg:justify-between">
         <div>
-          <p className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">
+          <p className="crm-label">
             Candidate Pipeline
           </p>
-          <h2 className="mt-2 text-2xl font-semibold text-slate-950">
+          <h2 className="crm-page-title mt-2">
             {candidate.first_name} {candidate.last_name}
           </h2>
-          <p className="mt-1 text-sm text-slate-600">
+          <p className="crm-page-copy mt-1">
             {candidate.current_title ?? "No title"} | {formatEnumLabel(candidate.stage)}
           </p>
         </div>
 
         <Link
           href={`/candidates/${candidate.id}/edit`}
-          className="inline-flex h-10 items-center rounded-md border border-slate-300 bg-white px-4 text-sm font-medium text-slate-700"
+          className="crm-secondary-button justify-center shrink-0"
         >
           Edit candidate
         </Link>
@@ -90,34 +90,34 @@ export function CandidateDetail({ candidate }: CandidateDetailProps) {
 
       <div className="grid gap-6 xl:grid-cols-[1.2fr_0.8fr]">
         <div className="space-y-6">
-          <div className="rounded-lg border border-slate-200 bg-white p-6 shadow-sm">
-            <h3 className="text-lg font-semibold text-slate-950">Candidate profile</h3>
-            <dl className="mt-4 grid gap-4 sm:grid-cols-2">
-              <div>
-                <dt className="text-xs font-semibold uppercase tracking-[0.12em] text-slate-500">Source</dt>
-                <dd className="mt-1 text-sm text-slate-800">{candidate.source ?? "Unknown"}</dd>
+          <div className="crm-stat-card h-auto">
+            <h3 className="text-lg font-bold text-white tracking-tight">Candidate profile</h3>
+            <dl className="mt-6 grid gap-6 sm:grid-cols-2">
+              <div className="crm-field">
+                <dt className="crm-label">Source</dt>
+                <dd className="mt-1 text-sm font-semibold text-white/70">{candidate.source ?? "Unknown"}</dd>
               </div>
-              <div>
-                <dt className="text-xs font-semibold uppercase tracking-[0.12em] text-slate-500">Recruiter</dt>
-                <dd className="mt-1 text-sm text-slate-800">{recruiter?.full_name ?? "Unassigned"}</dd>
+              <div className="crm-field">
+                <dt className="crm-label">Recruiter</dt>
+                <dd className="mt-1 text-sm font-semibold text-white/70">{recruiter?.full_name ?? "Unassigned"}</dd>
               </div>
-              <div>
-                <dt className="text-xs font-semibold uppercase tracking-[0.12em] text-slate-500">Email</dt>
-                <dd className="mt-1 text-sm text-slate-800">{candidate.email ?? "Not set"}</dd>
+              <div className="crm-field">
+                <dt className="crm-label">Email</dt>
+                <dd className="mt-1 text-sm font-semibold text-white/70">{candidate.email ?? "Not set"}</dd>
               </div>
-              <div>
-                <dt className="text-xs font-semibold uppercase tracking-[0.12em] text-slate-500">Phone</dt>
-                <dd className="mt-1 text-sm text-slate-800">{candidate.phone ?? "Not set"}</dd>
+              <div className="crm-field">
+                <dt className="crm-label">Phone</dt>
+                <dd className="mt-1 text-sm font-semibold text-white/70">{candidate.phone ?? "Not set"}</dd>
               </div>
-              <div>
-                <dt className="text-xs font-semibold uppercase tracking-[0.12em] text-slate-500">Location</dt>
-                <dd className="mt-1 text-sm text-slate-800">{candidate.location ?? "Not set"}</dd>
+              <div className="crm-field">
+                <dt className="crm-label">Location</dt>
+                <dd className="mt-1 text-sm font-semibold text-white/70">{candidate.location ?? "Not set"}</dd>
               </div>
-              <div>
-                <dt className="text-xs font-semibold uppercase tracking-[0.12em] text-slate-500">LinkedIn</dt>
-                <dd className="mt-1 text-sm text-slate-800">
+              <div className="crm-field">
+                <dt className="crm-label">LinkedIn</dt>
+                <dd className="mt-1 text-sm font-semibold text-white/70">
                   {candidate.linkedin_url ? (
-                    <a href={candidate.linkedin_url} className="hover:underline" target="_blank" rel="noreferrer">
+                    <a href={candidate.linkedin_url} className="text-[#2383E2] hover:underline font-semibold" target="_blank" rel="noreferrer">
                       Open profile
                     </a>
                   ) : (
@@ -127,24 +127,24 @@ export function CandidateDetail({ candidate }: CandidateDetailProps) {
               </div>
             </dl>
 
-            <div className="mt-6 border-t border-slate-200 pt-4">
-              <p className="text-xs font-semibold uppercase tracking-[0.12em] text-slate-500">Notes</p>
-              <p className="mt-2 text-sm leading-6 text-slate-700">
+            <div className="mt-8 border-t border-white/5 pt-6">
+              <p className="crm-label">Notes</p>
+              <p className="mt-3 text-sm leading-relaxed text-white/40">
                 {candidate.notes ?? "No notes added yet."}
               </p>
             </div>
           </div>
 
-          <div className="rounded-lg border border-slate-200 bg-white p-6 shadow-sm">
+          <div className="crm-stat-card h-auto">
             <div className="flex items-center justify-between gap-4">
-              <h3 className="text-lg font-semibold text-slate-950">Linked deals</h3>
-              <span className="text-sm text-slate-500">{candidate.applications?.length ?? 0} links</span>
+              <h3 className="text-lg font-bold text-white tracking-tight">Linked deals</h3>
+              <span className="text-[10px] font-black uppercase tracking-widest text-white/20 bg-white/5 px-2 py-0.5 rounded-sm">{candidate.applications?.length ?? 0} links</span>
             </div>
 
-            <div className="mt-4 space-y-3">
+            <div className="mt-6 space-y-4">
               {(candidate.applications?.length ?? 0) === 0 ? (
-                <div className="rounded-md border border-dashed border-slate-300 px-4 py-8 text-sm text-slate-600">
-                  This candidate is not linked to a deal yet.
+                <div className="crm-empty-state py-12">
+                  <p className="text-sm text-white/40">This candidate is not linked to a deal yet.</p>
                 </div>
               ) : (
                 candidate.applications?.map((application) => {
@@ -152,22 +152,23 @@ export function CandidateDetail({ candidate }: CandidateDetailProps) {
                   const applicationRecruiter = getSingleRelation(application.recruiter);
 
                   return (
-                    <div key={application.id} className="rounded-md border border-slate-200 p-4">
-                      <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
+                    <div key={application.id} className="rounded-sm border border-white/5 bg-white/[0.02] p-5 hover:border-white/10 transition-colors">
+                      <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
                         <div>
                           {deal ? (
-                            <Link href={`/deals/${deal.id}`} className="font-medium text-slate-950 hover:underline">
+                            <Link href={`/deals/${deal.id}`} className="font-bold text-white hover:text-[#2383E2] transition-colors">
                               {deal.title}
                             </Link>
                           ) : (
-                            <p className="font-medium text-slate-950">Unlinked deal</p>
+                            <p className="font-bold text-white">Unlinked deal</p>
                           )}
-                          <p className="mt-1 text-sm text-slate-600">
-                            {formatEnumLabel(application.status)} | Recruiter:{" "}
-                            {applicationRecruiter?.full_name ?? "Unassigned"}
+                          <p className="mt-2 text-[10px] font-black uppercase tracking-[0.15em] text-white/20 flex items-center gap-2">
+                             <span className="text-white/40">{formatEnumLabel(application.status)}</span>
+                             <span className="w-1 h-1 rounded-full bg-white/10"></span>
+                             <span>Recruiter: {applicationRecruiter?.full_name ?? "Unassigned"}</span>
                           </p>
                         </div>
-                        <div className="text-sm text-slate-500">
+                        <div className="text-[10px] font-bold uppercase tracking-widest text-white/10">
                           Updated {formatDate(application.last_stage_at)}
                         </div>
                       </div>
@@ -180,30 +181,30 @@ export function CandidateDetail({ candidate }: CandidateDetailProps) {
         </div>
 
         <div className="space-y-6">
-          <div className="rounded-lg border border-slate-200 bg-white p-6 shadow-sm">
-            <h3 className="text-lg font-semibold text-slate-950">Pipeline summary</h3>
-            <dl className="mt-4 space-y-3">
-              <div className="flex items-center justify-between gap-4 border-b border-slate-100 pb-3">
-                <dt className="text-sm text-slate-600">Screening</dt>
-                <dd className="text-sm font-medium text-slate-900">
+          <div className="crm-stat-card h-auto">
+            <h3 className="text-lg font-bold text-white tracking-tight">Pipeline summary</h3>
+            <dl className="mt-6 space-y-4">
+              <div className="flex items-center justify-between gap-4 border-b border-white/5 pb-4">
+                <dt className="text-sm font-medium text-white/40">Screening</dt>
+                <dd className="text-sm font-bold text-[#2383E2]">
                   {getScreeningStatus(candidate.stage, primaryApplication?.status)}
                 </dd>
               </div>
-              <div className="flex items-center justify-between gap-4 border-b border-slate-100 pb-3">
-                <dt className="text-sm text-slate-600">Interview</dt>
-                <dd className="text-sm font-medium text-slate-900">
+              <div className="flex items-center justify-between gap-4 border-b border-white/5 pb-4">
+                <dt className="text-sm font-medium text-white/40">Interview</dt>
+                <dd className="text-sm font-bold text-white/70">
                   {getInterviewStatus(candidate.stage, primaryApplication?.status)}
                 </dd>
               </div>
-              <div className="flex items-center justify-between gap-4 border-b border-slate-100 pb-3">
-                <dt className="text-sm text-slate-600">Shortlist</dt>
-                <dd className="text-sm font-medium text-slate-900">
+              <div className="flex items-center justify-between gap-4 border-b border-white/5 pb-4">
+                <dt className="text-sm font-medium text-white/40">Shortlist</dt>
+                <dd className="text-sm font-bold text-white/70">
                   {getShortlistStatus(candidate.stage, primaryApplication?.status)}
                 </dd>
               </div>
               <div className="flex items-center justify-between gap-4">
-                <dt className="text-sm text-slate-600">Placement</dt>
-                <dd className="text-sm font-medium text-slate-900">
+                <dt className="text-sm font-medium text-white/40">Placement</dt>
+                <dd className="text-sm font-bold text-white/70">
                   {getPlacementStatus(candidate.stage, primaryApplication?.status)}
                 </dd>
               </div>

@@ -2,27 +2,27 @@ import { cn } from "@/lib/utils";
 import { formatEnumLabel } from "@/features/deals/constants";
 
 const urgencyClasses: Record<string, string> = {
-  low: "border-slate-300 bg-slate-50 text-slate-700",
-  medium: "border-amber-300 bg-amber-50 text-amber-800",
-  high: "border-orange-300 bg-orange-50 text-orange-800",
-  critical: "border-red-300 bg-red-50 text-red-800"
+  low: "border-white/5 bg-white/5 text-white/40",
+  medium: "border-amber-500/20 bg-amber-500/10 text-amber-500",
+  high: "border-orange-500/20 bg-orange-500/10 text-orange-500",
+  critical: "border-red-500/20 bg-red-500/10 text-red-500"
 };
 
 const stageClasses: Record<string, string> = {
-  new: "border-slate-300 bg-slate-50 text-slate-700",
-  qualified: "border-blue-300 bg-blue-50 text-blue-800",
-  proposal: "border-indigo-300 bg-indigo-50 text-indigo-800",
-  negotiation: "border-violet-300 bg-violet-50 text-violet-800",
-  won: "border-emerald-300 bg-emerald-50 text-emerald-800",
-  lost: "border-rose-300 bg-rose-50 text-rose-800"
+  new: "border-white/5 bg-white/5 text-white/40",
+  qualified: "border-[#2383E2]/20 bg-[#2383E2]/10 text-[#2383E2]",
+  proposal: "border-indigo-500/20 bg-indigo-500/10 text-indigo-500",
+  negotiation: "border-violet-500/20 bg-violet-500/10 text-violet-500",
+  won: "border-emerald-500/20 bg-emerald-500/10 text-emerald-500",
+  lost: "border-rose-500/20 bg-rose-500/10 text-rose-500"
 };
 
 export function DealUrgencyBadge({ urgency }: { urgency: string }) {
   return (
     <span
       className={cn(
-        "inline-flex rounded-md border px-2 py-0.5 text-xs font-medium",
-        urgencyClasses[urgency] ?? "border-slate-300 bg-slate-50 text-slate-700"
+        "inline-flex rounded-sm border px-2.5 py-0.5 text-[10px] font-black uppercase tracking-widest",
+        urgencyClasses[urgency] ?? "border-white/5 bg-white/5 text-white/40"
       )}
     >
       {formatEnumLabel(urgency)}
@@ -34,8 +34,8 @@ export function DealStageBadge({ stage }: { stage: string }) {
   return (
     <span
       className={cn(
-        "inline-flex rounded-md border px-2 py-0.5 text-xs font-medium",
-        stageClasses[stage] ?? "border-slate-300 bg-slate-50 text-slate-700"
+        "inline-flex rounded-lg border px-2.5 py-0.5 text-[10px] font-black uppercase tracking-widest",
+        stageClasses[stage] ?? "border-white/5 bg-white/5 text-white/40"
       )}
     >
       {formatEnumLabel(stage)}

@@ -4,6 +4,7 @@ import { PaginationControls } from "@/components/shared/pagination-controls";
 import { CompaniesTable } from "@/features/companies/components/companies-table";
 import { getCompanies } from "@/features/companies/queries";
 import { TableSkeleton } from "@/components/ui/table-skeleton";
+import { getCurrentProfile } from "@/lib/auth";
 
 type CompaniesPageProps = {
   searchParams: Promise<{
@@ -11,8 +12,14 @@ type CompaniesPageProps = {
   }>;
 };
 
-async function CompaniesContent({ page }: { page: number }) {
-  const result = await getCompanies(page);
+async function CompaniesContent({ 
+  page, 
+  profile 
+}: { 
+  page: number;
+  profile: { id: string; role: string | null } | null;
+}) {
+  const result = await getCompanies(page, profile);
 
   return (
     <>
@@ -31,6 +38,8 @@ async function CompaniesContent({ page }: { page: number }) {
 export default async function CompaniesPage({ searchParams }: CompaniesPageProps) {
   const params = await searchParams;
   const page = Math.max(1, Number(params.page ?? "1") || 1);
+  const profile = (await getCurrentProfile()) as { id: string; role: string | null } | null;
+  const isAdmin = profile?.role === "admin";
 
   return (
     <section className="crm-page">
@@ -43,20 +52,22 @@ export default async function CompaniesPage({ searchParams }: CompaniesPageProps
           </p>
         </div>
 
-        <Link href="/companies/new" className="crm-primary-button">
-          Create company
-        </Link>
+        {isAdmin && (
+          <Link href="/companies/new" className="crm-primary-button">
+            Create company
+          </Link>
+        )}
       </div>
 
-      <div className="mb-6 flex items-center justify-between border border-slate-200 bg-white px-4 py-3">
-        <h3 className="text-sm font-semibold text-slate-900">All companies</h3>
+      <div className="mb-6 flex items-center justify-between border border-white/5 bg-white/[0.03] px-6 py-4 rounded-xl">
+        <h3 className="text-sm font-bold text-white uppercase tracking-[0.2em]">All companies</h3>
         <div className="flex items-center gap-2">
           {/* Add filters if needed */}
         </div>
       </div>
 
       <Suspense fallback={<TableSkeleton rows={10} />}>
-        <CompaniesContent page={page} />
+        <CompaniesContent page={page} profile={profile} />
       </Suspense>
     </section>
   );

@@ -65,15 +65,15 @@ export function CandidateForm({
   const linkedDeal = getSingleRelation(primaryApplication?.deal ?? null);
 
   return (
-    <form action={action} className="space-y-5 rounded-lg border border-slate-200 bg-white p-4 shadow-sm">
+    <form action={action} className="crm-stat-card h-auto space-y-8">
       {candidate ? <input type="hidden" name="id" value={candidate.id} /> : null}
       {primaryApplication ? (
         <input type="hidden" name="primary_application_id" value={primaryApplication.id} />
       ) : null}
 
-      <div className="grid gap-3 md:grid-cols-2">
-        <div className="space-y-1">
-          <label htmlFor="first_name" className="text-sm font-medium text-slate-700">
+      <div className="grid gap-6 md:grid-cols-2">
+        <div className="crm-field">
+          <label htmlFor="first_name" className="crm-label">
             First name
           </label>
           <input
@@ -82,12 +82,12 @@ export function CandidateForm({
             defaultValue={candidate?.first_name ?? ""}
             autoFocus
             required
-            className="h-10 w-full rounded-md border border-slate-300 px-3 text-sm"
+            className="crm-input"
           />
         </div>
 
-        <div className="space-y-1">
-          <label htmlFor="last_name" className="text-sm font-medium text-slate-700">
+        <div className="crm-field">
+          <label htmlFor="last_name" className="crm-label">
             Last name
           </label>
           <input
@@ -95,12 +95,12 @@ export function CandidateForm({
             name="last_name"
             defaultValue={candidate?.last_name ?? ""}
             required
-            className="h-10 w-full rounded-md border border-slate-300 px-3 text-sm"
+            className="crm-input"
           />
         </div>
 
-        <div className="space-y-1">
-          <label htmlFor="email" className="text-sm font-medium text-slate-700">
+        <div className="crm-field">
+          <label htmlFor="email" className="crm-label">
             Email
           </label>
           <input
@@ -108,68 +108,68 @@ export function CandidateForm({
             name="email"
             type="email"
             defaultValue={candidate?.email ?? ""}
-            className="h-10 w-full rounded-md border border-slate-300 px-3 text-sm"
+            className="crm-input"
           />
         </div>
 
-        <div className="space-y-1">
-          <label htmlFor="phone" className="text-sm font-medium text-slate-700">
+        <div className="crm-field">
+          <label htmlFor="phone" className="crm-label">
             Phone
           </label>
           <input
             id="phone"
             name="phone"
             defaultValue={candidate?.phone ?? ""}
-            className="h-10 w-full rounded-md border border-slate-300 px-3 text-sm"
+            className="crm-input"
           />
         </div>
 
-        <div className="space-y-1">
-          <label htmlFor="current_title" className="text-sm font-medium text-slate-700">
+        <div className="crm-field">
+          <label htmlFor="current_title" className="crm-label">
             Current title
           </label>
           <input
             id="current_title"
             name="current_title"
             defaultValue={candidate?.current_title ?? ""}
-            className="h-10 w-full rounded-md border border-slate-300 px-3 text-sm"
+            className="crm-input"
           />
         </div>
 
-        <div className="space-y-1">
-          <label htmlFor="location" className="text-sm font-medium text-slate-700">
+        <div className="crm-field">
+          <label htmlFor="location" className="crm-label">
             Location
           </label>
           <input
             id="location"
             name="location"
             defaultValue={candidate?.location ?? ""}
-            className="h-10 w-full rounded-md border border-slate-300 px-3 text-sm"
+            className="crm-input"
           />
         </div>
 
-        <div className="space-y-1">
-          <label htmlFor="source" className="text-sm font-medium text-slate-700">
+        <div className="crm-field">
+          <label htmlFor="source" className="crm-label">
             Source
           </label>
           <input
             id="source"
             name="source"
             defaultValue={candidate?.source ?? ""}
-            className="h-10 w-full rounded-md border border-slate-300 px-3 text-sm"
+            className="crm-input"
             placeholder="Referral"
           />
         </div>
 
-        <div className="space-y-1">
-          <label htmlFor="assigned_profile_id" className="text-sm font-medium text-slate-700">
+        <div className="crm-field">
+          <label htmlFor="assigned_profile_id" className="crm-label">
             Assigned recruiter
           </label>
           <select
             id="assigned_profile_id"
             name="assigned_profile_id"
             defaultValue={candidate?.assigned_profile_id ?? ""}
-            className="h-10 w-full rounded-md border border-slate-300 bg-white px-3 text-sm"
+            className="crm-select"
           >
             <option value="">Unassigned</option>
             {recruiters.map((recruiter) => (
@@ -180,15 +180,15 @@ export function CandidateForm({
           </select>
         </div>
 
-        <div className="space-y-1">
-          <label htmlFor="stage" className="text-sm font-medium text-slate-700">
+        <div className="crm-field">
+          <label htmlFor="stage" className="crm-label">
             Pipeline stage
           </label>
           <select
             id="stage"
             name="stage"
             defaultValue={candidate?.stage ?? "sourced"}
-            className="h-10 w-full rounded-md border border-slate-300 bg-white px-3 text-sm"
+            className="crm-select"
           >
             {candidateStageOptions.map((stage) => (
               <option key={stage} value={stage}>
@@ -198,27 +198,27 @@ export function CandidateForm({
           </select>
         </div>
 
-        <div className="space-y-1">
-          <label htmlFor="linkedin_url" className="text-sm font-medium text-slate-700">
+        <div className="crm-field">
+          <label htmlFor="linkedin_url" className="crm-label">
             LinkedIn URL
           </label>
           <input
             id="linkedin_url"
             name="linkedin_url"
             defaultValue={candidate?.linkedin_url ?? ""}
-            className="h-10 w-full rounded-md border border-slate-300 px-3 text-sm"
+            className="crm-input"
           />
         </div>
 
-        <div className="space-y-1">
-          <label htmlFor="linked_deal_id" className="text-sm font-medium text-slate-700">
+        <div className="crm-field">
+          <label htmlFor="linked_deal_id" className="crm-label">
             Linked deal
           </label>
           <select
             id="linked_deal_id"
             name="linked_deal_id"
             defaultValue={linkedDeal?.id ?? ""}
-            className="h-10 w-full rounded-md border border-slate-300 bg-white px-3 text-sm"
+            className="crm-select"
           >
             <option value="">No linked deal</option>
             {deals.map((deal) => (
@@ -229,15 +229,15 @@ export function CandidateForm({
           </select>
         </div>
 
-        <div className="space-y-1">
-          <label htmlFor="application_status" className="text-sm font-medium text-slate-700">
+        <div className="crm-field">
+          <label htmlFor="application_status" className="crm-label">
             Deal application status
           </label>
           <select
             id="application_status"
             name="application_status"
             defaultValue={primaryApplication?.status ?? "applied"}
-            className="h-10 w-full rounded-md border border-slate-300 bg-white px-3 text-sm"
+            className="crm-select"
           >
             {applicationStatusOptions.map((status) => (
               <option key={status} value={status}>
@@ -247,8 +247,8 @@ export function CandidateForm({
           </select>
         </div>
 
-        <div className="space-y-1 md:col-span-2">
-          <label htmlFor="notes" className="text-sm font-medium text-slate-700">
+        <div className="crm-field md:col-span-2">
+          <label htmlFor="notes" className="crm-label">
             Candidate notes
           </label>
           <textarea
@@ -256,12 +256,12 @@ export function CandidateForm({
             name="notes"
             rows={3}
             defaultValue={candidate?.notes ?? ""}
-            className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm"
+            className="crm-input h-auto py-2"
           />
         </div>
 
-        <div className="space-y-1 md:col-span-2">
-          <label htmlFor="application_notes" className="text-sm font-medium text-slate-700">
+        <div className="crm-field md:col-span-2">
+          <label htmlFor="application_notes" className="crm-label">
             Application notes
           </label>
           <textarea
@@ -269,21 +269,21 @@ export function CandidateForm({
             name="application_notes"
             rows={2}
             defaultValue={primaryApplication?.notes ?? ""}
-            className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm"
+            className="crm-input h-auto py-2"
           />
         </div>
       </div>
 
-      <div className="flex items-center gap-2">
+      <div className="flex items-center gap-3 pt-4">
         <button
           type="submit"
-          className="inline-flex h-10 items-center rounded-md bg-slate-900 px-4 text-sm font-medium text-white"
+          className="crm-primary-button px-8"
         >
           {mode === "create" ? "Create candidate" : "Save changes"}
         </button>
         <Link
           href={candidate ? `/candidates/${candidate.id}` : "/candidates"}
-          className="inline-flex h-10 items-center rounded-md border border-slate-300 bg-white px-4 text-sm font-medium text-slate-700"
+          className="crm-secondary-button"
         >
           Cancel
         </Link>

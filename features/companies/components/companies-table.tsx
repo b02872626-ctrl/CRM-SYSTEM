@@ -13,8 +13,8 @@ export function CompaniesTable({ companies }: { companies: CompanyRow[] }) {
   if (companies.length === 0) {
     return (
       <div className="crm-empty-state">
-        <h3 className="text-base font-semibold text-slate-950">No companies found</h3>
-        <p className="mt-1 text-sm text-slate-600">
+        <h3 className="text-base font-bold text-white tracking-tight">No companies found</h3>
+        <p className="mt-1 text-sm text-white/40">
           Try creating a new company to get started.
         </p>
       </div>
@@ -40,19 +40,19 @@ export function CompaniesTable({ companies }: { companies: CompanyRow[] }) {
                 <td className="crm-table-td">
                   <Link 
                     href={`/companies/${company.id}`} 
-                    className="font-medium text-slate-950 hover:underline text-sm after:absolute after:inset-0 after:z-10"
+                    className="font-bold text-white hover:text-[#2383E2] transition-colors text-sm after:absolute after:inset-0 after:z-10"
                   >
                     {company.name}
                   </Link>
                 </td>
                 <td className="crm-table-td text-sm">{company.industry ?? "Not set"}</td>
-                <td className="crm-table-td text-sm text-slate-600">{company.country ?? "Not set"}</td>
+                <td className="crm-table-td text-sm text-white/40">{company.country ?? "Not set"}</td>
                 <td className="crm-table-td">
-                    <span className="inline-flex items-center rounded-sm bg-slate-50 px-1.5 py-0.5 text-[11px] font-medium text-slate-700 border border-slate-200 uppercase tracking-wider">
+                    <span className="inline-flex items-center rounded-sm bg-white/5 px-2 py-0.5 text-[10px] font-bold text-white/60 border border-white/10 uppercase tracking-widest">
                         {company.status}
                     </span>
                 </td>
-                <td className="crm-table-td text-sm text-slate-600">
+                <td className="crm-table-td text-sm text-white/40">
                   {company.owner?.full_name ?? "Unassigned"}
                 </td>
               </tr>

@@ -48,16 +48,16 @@ export function ActivityTimeline({
   emptyMessage: string;
 }) {
   return (
-    <div className="rounded-lg border border-slate-200 bg-white p-6 shadow-sm">
+    <div className="crm-stat-card h-auto">
       <div className="flex items-center justify-between gap-4">
-        <h3 className="text-lg font-semibold text-slate-950">{title}</h3>
-        <span className="text-sm text-slate-500">{items.length} items</span>
+        <h3 className="text-lg font-bold text-white tracking-tight">{title}</h3>
+        <span className="text-[10px] font-black uppercase tracking-widest text-white/20 bg-white/5 px-2 py-0.5 rounded-sm">{items.length} items</span>
       </div>
 
-      <div className="mt-4 space-y-4">
+      <div className="mt-6 space-y-8">
         {items.length === 0 ? (
-          <div className="rounded-md border border-dashed border-slate-300 px-4 py-8 text-sm text-slate-600">
-            {emptyMessage}
+          <div className="crm-empty-state py-12">
+            <p className="text-sm text-white/40">{emptyMessage}</p>
           </div>
         ) : (
           items.map((activity) => {
@@ -65,30 +65,31 @@ export function ActivityTimeline({
             const deal = getSingleRelation(activity.deal);
 
             return (
-              <div key={activity.id} className="border-l-2 border-slate-200 pl-4">
-                <p className="text-xs font-semibold uppercase tracking-[0.12em] text-slate-500">
+              <div key={activity.id} className="border-l-2 border-white/5 pl-6 py-1 relative">
+                <div className="absolute left-[-5px] top-1.5 w-2 h-2 rounded-[1px] bg-[#2383E2] shadow-[0_0_10px_rgba(35,131,226,0.5)]"></div>
+                <p className="crm-label">
                   {formatEnumLabel(activity.activity_type)}
                 </p>
-                <h4 className="mt-1 font-medium text-slate-950">{activity.summary}</h4>
+                <h4 className="mt-1 font-bold text-white">{activity.summary}</h4>
                 {activity.details ? (
-                  <p className="mt-1 text-sm text-slate-600">Next step: {activity.details}</p>
+                  <p className="mt-1 text-sm text-white/50 leading-relaxed"><span className="text-white/20 font-medium">Next step:</span> {activity.details}</p>
                 ) : null}
                 {activity.due_at ? (
-                  <p className="mt-1 text-sm text-slate-600">
-                    Follow-up date: {formatDate(activity.due_at)}
+                  <p className="mt-1 text-xs font-bold text-[#2383E2]">
+                    Follow-up: {formatDate(activity.due_at)}
                   </p>
                 ) : null}
-                <p className="mt-2 text-xs text-slate-500">
-                  {profile?.full_name ?? "System"}
+                <p className="mt-3 text-[10px] font-bold uppercase tracking-widest text-white/20 flex items-center gap-2">
+                  <span className="text-white/40">{profile?.full_name ?? "System"}</span>
                   {deal ? (
                     <>
-                      {" | "}
-                      <Link href={`/deals/${deal.id}`} className="hover:underline">
+                      <span className="w-1 h-1 rounded-full bg-white/10"></span>
+                      <Link href={`/deals/${deal.id}`} className="hover:text-white transition-colors">
                         {deal.title}
                       </Link>
                     </>
                   ) : null}
-                  {" | "}
+                  <span className="w-1 h-1 rounded-full bg-white/10"></span>
                   {formatDate(activity.created_at)}
                 </p>
               </div>

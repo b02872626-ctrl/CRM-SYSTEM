@@ -110,22 +110,22 @@ export function DealDetail({ deal, candidates, activities }: DealDetailProps) {
 
   return (
     <section className="space-y-6">
-      <div className="flex flex-col gap-4 rounded-lg border border-slate-200 bg-white p-6 shadow-sm lg:flex-row lg:items-start lg:justify-between">
-        <div className="space-y-3">
-          <div className="flex flex-wrap items-center gap-2">
+      <div className="flex flex-col gap-6 crm-stat-card h-auto lg:flex-row lg:items-center lg:justify-between">
+        <div className="space-y-4">
+          <div className="flex flex-wrap items-center gap-3">
             <DealStageBadge stage={deal.stage} />
             <DealUrgencyBadge urgency={deal.urgency} />
           </div>
           <div>
-            <h2 className="text-2xl font-semibold text-slate-950">{deal.title}</h2>
-            <p className="mt-1 text-sm text-slate-600">
+            <h2 className="crm-page-title">{deal.title}</h2>
+            <p className="crm-page-copy mt-1">
               {company?.name ?? "Unlinked company"} | {deal.number_of_hires} hires |{" "}
               {formatEnumLabel(deal.seniority)}
             </p>
           </div>
         </div>
 
-        <div className="space-y-3">
+        <div className="flex flex-col sm:flex-row lg:flex-col gap-3">
           <DealStatusForm
             dealId={deal.id}
             currentStage={deal.stage}
@@ -133,7 +133,7 @@ export function DealDetail({ deal, candidates, activities }: DealDetailProps) {
           />
           <Link
             href={`/deals/${deal.id}/edit`}
-            className="inline-flex h-9 items-center rounded-md border border-slate-300 bg-white px-3 text-sm font-medium text-slate-700"
+            className="crm-secondary-button justify-center"
           >
             Edit deal
           </Link>
@@ -142,55 +142,55 @@ export function DealDetail({ deal, candidates, activities }: DealDetailProps) {
 
       <div className="grid gap-6 xl:grid-cols-[1.3fr_0.7fr]">
         <div className="space-y-6">
-          <div className="rounded-lg border border-slate-200 bg-white p-6 shadow-sm">
-            <h3 className="text-lg font-semibold text-slate-950">Role details</h3>
-            <dl className="mt-4 grid gap-4 sm:grid-cols-2">
-              <div>
-                <dt className="text-xs font-semibold uppercase tracking-[0.12em] text-slate-500">
+          <div className="crm-stat-card h-auto">
+            <h3 className="text-lg font-bold text-white tracking-tight">Role details</h3>
+            <dl className="mt-6 grid gap-6 sm:grid-cols-2">
+              <div className="crm-field">
+                <dt className="crm-label">
                   Linked company
                 </dt>
-                <dd className="mt-1 text-sm text-slate-800">{company?.name ?? "Unlinked company"}</dd>
+                <dd className="mt-1 text-sm font-semibold text-white/70">{company?.name ?? "Unlinked company"}</dd>
               </div>
-              <div>
-                <dt className="text-xs font-semibold uppercase tracking-[0.12em] text-slate-500">
+              <div className="crm-field">
+                <dt className="crm-label">
                   Assigned recruiter
                 </dt>
-                <dd className="mt-1 text-sm text-slate-800">{recruiter?.full_name ?? "Unassigned"}</dd>
+                <dd className="mt-1 text-sm font-semibold text-white/70">{recruiter?.full_name ?? "Unassigned"}</dd>
               </div>
-              <div>
-                <dt className="text-xs font-semibold uppercase tracking-[0.12em] text-slate-500">
+              <div className="crm-field">
+                <dt className="crm-label">
                   Expected revenue
                 </dt>
-                <dd className="mt-1 text-sm text-slate-800">
+                <dd className="mt-1 text-sm font-semibold text-white/70">
                   {formatCurrency(deal.value, deal.currency)}
                 </dd>
               </div>
-              <div>
-                <dt className="text-xs font-semibold uppercase tracking-[0.12em] text-slate-500">
+              <div className="crm-field">
+                <dt className="crm-label">
                   Expected close
                 </dt>
-                <dd className="mt-1 text-sm text-slate-800">{formatDate(deal.expected_close_date)}</dd>
+                <dd className="mt-1 text-sm font-semibold text-white/70">{formatDate(deal.expected_close_date)}</dd>
               </div>
             </dl>
 
-            <div className="mt-6 border-t border-slate-200 pt-4">
-              <p className="text-xs font-semibold uppercase tracking-[0.12em] text-slate-500">Notes</p>
-              <p className="mt-2 text-sm leading-6 text-slate-700">
+            <div className="mt-8 border-t border-white/5 pt-6">
+              <p className="crm-label">Notes</p>
+              <p className="mt-3 text-sm leading-relaxed text-white/40">
                 {deal.notes ?? "No notes added yet."}
               </p>
             </div>
           </div>
 
-          <div className="rounded-lg border border-slate-200 bg-white p-6 shadow-sm">
+          <div className="crm-stat-card h-auto">
             <div className="flex items-center justify-between gap-4">
-              <h3 className="text-lg font-semibold text-slate-950">Candidate list</h3>
-              <span className="text-sm text-slate-500">{candidates.length} linked</span>
+              <h3 className="text-lg font-bold text-white tracking-tight">Candidate list</h3>
+              <span className="text-[10px] font-black uppercase tracking-widest text-white/20 bg-white/5 px-2 py-0.5 rounded-sm">{candidates.length} linked</span>
             </div>
 
-            <div className="mt-4 space-y-3">
+            <div className="mt-6 space-y-4">
               {candidates.length === 0 ? (
-                <div className="rounded-md border border-dashed border-slate-300 px-4 py-8 text-sm text-slate-600">
-                  No candidates linked to this deal yet.
+                <div className="crm-empty-state py-12">
+                  <p className="text-sm text-white/40">No candidates linked to this deal yet.</p>
                 </div>
               ) : (
                 candidates.map((application) => {
@@ -199,25 +199,26 @@ export function DealDetail({ deal, candidates, activities }: DealDetailProps) {
                   return (
                     <div
                       key={application.id}
-                      className="rounded-md border border-slate-200 px-4 py-3"
+                      className="rounded-sm border border-white/5 bg-white/[0.02] px-5 py-4 hover:border-white/10 transition-colors"
                     >
-                      <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
+                      <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
                         <div>
-                          <h4 className="font-medium text-slate-950">
+                          <h4 className="font-bold text-white">
                             {candidate ? (
-                              <Link href={`/candidates/${candidate.id}`} className="hover:underline">
+                              <Link href={`/candidates/${candidate.id}`} className="hover:text-[#2383E2] transition-colors">
                                 {candidate.first_name} {candidate.last_name}
                               </Link>
                             ) : (
                               "Unknown candidate"
                             )}
                           </h4>
-                          <p className="text-sm text-slate-600">
-                            {candidate?.current_title ?? "No title"} |{" "}
-                            {formatEnumLabel(application.status)}
+                          <p className="mt-1 text-xs font-bold uppercase tracking-widest text-white/20">
+                            <span className="text-white/40">{candidate?.current_title ?? "No title"}</span>
+                            {" | "}
+                            <span>{formatEnumLabel(application.status)}</span>
                           </p>
                         </div>
-                        <div className="text-sm text-slate-500">
+                        <div className="text-[10px] font-bold uppercase tracking-widest text-white/10">
                           Updated {formatDate(application.last_stage_at)}
                         </div>
                       </div>

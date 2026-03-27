@@ -19,22 +19,22 @@ async function DashboardStats() {
   const dashboardData = await getDashboardData();
   
   return (
-    <div className="crm-stat-grid">
+    <div className="crm-stat-grid font-medium text-white/40">
       <div className="crm-stat-card">
-        <p className="text-sm font-medium text-slate-500">Follow-ups due today</p>
-        <p className="mt-2 text-3xl font-semibold text-slate-950">
+        <p className="crm-label">Follow-ups due today</p>
+        <p className="crm-page-title">
           {dashboardData.dueTodayCount}
         </p>
       </div>
       <div className="crm-stat-card">
-        <p className="text-sm font-medium text-slate-500">Overdue follow-ups</p>
-        <p className="mt-2 text-3xl font-semibold text-slate-950">
+        <p className="crm-label">Overdue follow-ups</p>
+        <p className="crm-page-title">
           {dashboardData.overdueCount}
         </p>
       </div>
       <div className="crm-stat-card">
-        <p className="text-sm font-medium text-slate-500">Recent updates loaded</p>
-        <p className="mt-2 text-3xl font-semibold text-slate-950">{dashboardData.recentRecords.length}</p>
+        <p className="crm-label">Recent updates loaded</p>
+        <p className="crm-page-title">{dashboardData.recentRecords.length}</p>
       </div>
     </div>
   );
@@ -45,34 +45,34 @@ async function DashboardRecentUpdates() {
   const recentRecords = dashboardData.recentRecords;
 
   return (
-    <div className="border border-slate-200 bg-white">
-      <div className="flex items-center justify-between gap-4">
-        <h3 className="px-4 py-3 text-base font-semibold text-slate-950">Recently updated</h3>
-        <span className="px-4 py-3 text-sm text-slate-500">{recentRecords.length}</span>
+    <div className="crm-table-shell">
+      <div className="flex items-center justify-between gap-4 bg-white/[0.03] border-b border-white/5">
+        <h3 className="px-6 py-4 text-sm font-bold text-white uppercase tracking-[0.2em]">Recently updated</h3>
+        <span className="px-6 py-4 text-[10px] font-black uppercase tracking-widest text-white/20">{recentRecords.length}</span>
       </div>
       <div>
         {recentRecords.length === 0 ? (
-          <div className="border-t border-dashed border-slate-300 px-4 py-8 text-sm text-slate-600">
-            No recent record updates.
+          <div className="crm-empty-state py-12 border-none">
+            <p className="text-sm text-white/40">No recent record updates.</p>
           </div>
         ) : (
           recentRecords.map((record) => (
             <div
               key={`${record.type}-${record.id}`}
-              className="flex items-center justify-between gap-4 border-t border-slate-200 px-4 py-3 group relative transition-colors hover:bg-slate-50"
+              className="flex items-center justify-between gap-4 border-t border-white/5 px-6 py-4 group relative transition-colors hover:bg-white/[0.03] first:border-t-0"
             >
               <div className="min-w-0">
-                <p className="text-xs font-semibold uppercase tracking-[0.12em] text-slate-500">
+                <p className="crm-label mb-1">
                   {record.type}
                 </p>
                 <Link 
                   href={record.href} 
-                  className="block truncate font-medium text-slate-950 group-hover:underline after:absolute after:inset-0 after:z-10"
+                  className="block truncate font-bold text-white group-hover:text-[#2383E2] transition-colors after:absolute after:inset-0 after:z-10"
                 >
                   {record.label}
                 </Link>
               </div>
-              <p className="shrink-0 text-xs text-slate-500 relative z-20 pointer-events-none">{formatDate(record.updated_at)}</p>
+              <p className="shrink-0 text-[10px] font-bold uppercase tracking-widest text-white/20 relative z-20 pointer-events-none">{formatDate(record.updated_at)}</p>
             </div>
           ))
         )}

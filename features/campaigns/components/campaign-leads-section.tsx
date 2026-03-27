@@ -21,10 +21,20 @@ type Lead = {
     source: string | null;
     priority: string | null;
     status: string;
+    website: string | null;
+    notes: string | null;
+    hiring_signal: string | null;
+    contacts: Array<{
+      id: string;
+      full_name: string;
+      role_title: string | null;
+      email: string | null;
+      phone: string | null;
+    }>;
   } | null;
   primary_contact: {
     full_name: string;
-    job_title: string | null;
+    role_title: string | null;
     email: string | null;
     phone: string | null;
   } | null;
@@ -42,6 +52,7 @@ type CampaignLeadsSectionProps = {
     name: string;
     industry: string | null;
   }>;
+  searchQuery?: string;
 };
 
 export function CampaignLeadsSection({
@@ -50,7 +61,8 @@ export function CampaignLeadsSection({
   linkedCompaniesTotal,
   linkedCompaniesPageSize,
   currentPage,
-  availableCompanies
+  availableCompanies,
+  searchQuery
 }: CampaignLeadsSectionProps) {
   const [selectedLead, setSelectedLead] = useState<Lead | null>(null);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
@@ -88,6 +100,31 @@ export function CampaignLeadsSection({
         onClearLead={() => setSelectedLead(null)}
       />
 
+      <div className="flex items-center justify-between gap-4 bg-white/[0.02] border border-white/5 p-4 rounded-xl">
+        <form className="flex-1 flex items-center gap-3">
+          <div className="relative flex-1 group">
+            <input
+              type="text"
+              name="search"
+              defaultValue={searchQuery}
+              placeholder="Search leads by company name..."
+              className="crm-input w-full pl-9"
+            />
+            <div className="absolute left-3 top-1/2 -translate-y-1/2 text-white/20 group-focus-within:text-[#2383E2] transition-colors">
+              <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="lucide lucide-search"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>
+            </div>
+          </div>
+          <button type="submit" className="crm-primary-button whitespace-nowrap">
+            Search
+          </button>
+          {searchQuery && (
+            <a href={`/campaigns/${campaignId}`} className="crm-secondary-button whitespace-nowrap">
+              Reset
+            </a>
+          )}
+        </form>
+      </div>
+
       <div className="overflow-visible">
         {linkedCompanies.length === 0 ? (
           <div className="py-12 text-center text-slate-500">No leads linked yet.</div>
@@ -106,6 +143,7 @@ export function CampaignLeadsSection({
                 page={currentPage}
                 pageSize={linkedCompaniesPageSize}
                 totalCount={linkedCompaniesTotal}
+                searchParams={{ search: searchQuery }}
               />
             </div>
           </div>

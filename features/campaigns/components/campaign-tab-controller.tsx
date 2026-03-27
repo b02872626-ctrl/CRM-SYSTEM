@@ -19,14 +19,14 @@ export function CampaignTabController({
 
   return (
     <div className="w-full">
-      <div className="mb-6 flex border-b border-slate-200">
+      <div className="mb-6 flex border-b border-white/5">
         <button
           onClick={() => setActiveTab("leads")}
           className={cn(
-            "flex items-center gap-2 border-b-2 px-6 py-3 text-sm font-medium transition-all",
+            "flex items-center gap-2 border-b-2 px-6 py-3 text-sm font-semibold transition-all",
             activeTab === "leads"
-              ? "border-slate-950 text-slate-950"
-              : "border-transparent text-slate-500 hover:text-slate-700"
+              ? "border-white text-white"
+              : "border-transparent text-white/40 hover:text-white/60"
           )}
         >
           <Users className="h-4 w-4" />
@@ -35,10 +35,10 @@ export function CampaignTabController({
         <button
           onClick={() => setActiveTab("about")}
           className={cn(
-            "flex items-center gap-2 border-b-2 px-6 py-3 text-sm font-medium transition-all",
+            "flex items-center gap-2 border-b-2 px-6 py-3 text-sm font-semibold transition-all",
             activeTab === "about"
-              ? "border-slate-950 text-slate-950"
-              : "border-transparent text-slate-500 hover:text-slate-700"
+              ? "border-white text-white"
+              : "border-transparent text-white/40 hover:text-white/60"
           )}
         >
           <LayoutDashboard className="h-4 w-4" />

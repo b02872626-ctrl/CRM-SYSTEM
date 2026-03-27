@@ -34,10 +34,13 @@ type CampaignDetailProps = {
       source: string | null;
       priority: string | null;
       status: string;
+      website: string | null;
+      notes: string | null;
+      hiring_signal: string | null;
     } | null;
     primary_contact: {
       full_name: string;
-      job_title: string | null;
+      role_title: string | null;
       email: string | null;
       phone: string | null;
     } | null;
@@ -56,6 +59,7 @@ type CampaignDetailProps = {
     qualifiedCompanyCount: number;
     dealsCreatedCount: number;
   };
+  searchQuery?: string;
 };
 
 export function CampaignDetail({
@@ -65,7 +69,8 @@ export function CampaignDetail({
   linkedCompaniesPageSize,
   currentPage,
   availableCompanies,
-  metrics
+  metrics,
+  searchQuery
 }: CampaignDetailProps) {
   return (
     <section className="crm-page">
@@ -84,6 +89,7 @@ export function CampaignDetail({
             linkedCompaniesPageSize={linkedCompaniesPageSize}
             currentPage={currentPage}
             availableCompanies={availableCompanies}
+            searchQuery={searchQuery}
           />
         }
       />

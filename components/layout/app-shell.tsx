@@ -8,16 +8,18 @@ import { cn } from "@/lib/utils";
 type AppShellProps = {
   children: ReactNode;
   userEmail?: string | null;
+  userRole?: string | null;
+  userName?: string | null;
 };
 
 import { SidebarProvider } from "./sidebar-context";
 
-export function AppShell({ children, userEmail }: AppShellProps) {
+export function AppShell({ children, userEmail, userRole, userName }: AppShellProps) {
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
 
   return (
     <SidebarProvider>
-      <div className="min-h-screen bg-[#f7f7f5] text-slate-900">
+      <div className="min-h-screen bg-background text-foreground">
         <div className={cn(
           "min-h-screen transition-all duration-300 ease-in-out",
           isSidebarOpen ? "lg:pl-64" : "lg:pl-0"
@@ -26,6 +28,8 @@ export function AppShell({ children, userEmail }: AppShellProps) {
             isOpen={isSidebarOpen} 
             onToggle={() => setIsSidebarOpen(!isSidebarOpen)} 
             userEmail={userEmail}
+            userRole={userRole}
+            userName={userName}
           />
           <div className="flex min-h-screen flex-1 flex-col">
             <Topbar 

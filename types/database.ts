@@ -6,7 +6,7 @@ export type Json =
   | { [key: string]: Json | undefined }
   | Json[];
 
-export type ProfileRole = "admin" | "manager" | "agent" | "recruiter";
+export type ProfileRole = "admin" | "sales";
 export type CompanyStatus =
   | "target"
   | "researching"
@@ -331,7 +331,7 @@ export type Database = {
           email: string | null;
           full_name: string;
           id: string;
-          job_title: string | null;
+          role_title: string | null;
           linkedin_url: string | null;
           notes: string | null;
           owner_profile_id: string | null;
@@ -345,7 +345,7 @@ export type Database = {
           email?: string | null;
           full_name: string;
           id?: string;
-          job_title?: string | null;
+          role_title?: string | null;
           linkedin_url?: string | null;
           notes?: string | null;
           owner_profile_id?: string | null;
@@ -359,7 +359,7 @@ export type Database = {
           email?: string | null;
           full_name?: string;
           id?: string;
-          job_title?: string | null;
+          role_title?: string | null;
           linkedin_url?: string | null;
           notes?: string | null;
           owner_profile_id?: string | null;
@@ -429,7 +429,7 @@ export type Database = {
           full_name: string;
           id: string;
           is_active: boolean;
-          job_title: string | null;
+          role_title: string | null;
           role: ProfileRole;
           updated_at: string;
         };
@@ -440,7 +440,7 @@ export type Database = {
           full_name: string;
           id?: string;
           is_active?: boolean;
-          job_title?: string | null;
+          role_title?: string | null;
           role?: ProfileRole;
           updated_at?: string;
         };
@@ -451,7 +451,7 @@ export type Database = {
           full_name?: string;
           id?: string;
           is_active?: boolean;
-          job_title?: string | null;
+          role_title?: string | null;
           role?: ProfileRole;
           updated_at?: string;
         };
