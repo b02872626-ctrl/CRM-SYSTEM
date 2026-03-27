@@ -150,10 +150,9 @@ export async function updateCompanyAction(formData: FormData) {
   // Also include website if present in payload
   const website = normalizeOptionalString(getString(formData, "website"));
   
-  const { error } = await (supabase
-    .from("companies")
-    .update({ ...payload, website } as any)
-    .eq("id", id) as any);
+  const { error } = await (supabase.from("companies") as any)
+    .update({ ...payload, website })
+    .eq("id", id);
 
   if (error) throw new Error(error.message);
 
@@ -244,8 +243,7 @@ export async function updateContactAction(formData: FormData) {
     }
   }
 
-  const { error } = await (supabase
-    .from("contacts")
+  const { error } = await (supabase.from("contacts") as any)
     .update({
       full_name: getString(formData, "full_name"),
       role_title: normalizeOptionalString(getString(formData, "role_title")),
@@ -254,8 +252,8 @@ export async function updateContactAction(formData: FormData) {
       linkedin_url: normalizeOptionalString(getString(formData, "linkedin_url")),
       notes: normalizeOptionalString(getString(formData, "notes")),
       status: getString(formData, "status") as any
-    } as any)
-    .eq("id", contactId) as any);
+    })
+    .eq("id", contactId);
 
   if (error) throw new Error(error.message);
 
